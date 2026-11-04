@@ -29,3 +29,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: .gitignore, README.md, docs/AI_LOG.md — [HASH: se completa en el siguiente commit]
 - Verificación: git check-ignore -v .env confirmó que .env queda excluido; push a main y creación de la rama Santiago en GitHub.
 - Aprendizaje: Quedó listo el repositorio con la estructura base, la protección de secretos y el flujo de ramas. Se entendió que el .gitignore debe existir antes del primer commit, porque un archivo ya subido sigue en el historial aunque luego se ignore, y que clonar un repo vacío lo deja conectado al remoto sin configurar origin a mano.
+
+### Entrada #3
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Definir el alcance de la primera entrega y crear la app Expo base
+- Prompt: "Primera entrega para mañana: registro del conductor con Pestaña 1 (datos personales) y Pestaña 2 (vehículo), validaciones por campo y registro del usuario en la base de datos. Planificar el trabajo y crear el proyecto Expo compatible con Expo Go 58.0.5."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se definió el alcance de la entrega (pestañas 1 y 2, validaciones, guardado en Firestore con estado pending) y un plan de 9 pasos. Se creó la app con create-expo-app (plantilla blank, SDK 58) en la carpeta mobile/.
+- Qué se usó / modificó / descartó: Se usó la plantilla blank en lugar de la de Expo Router. La Pestaña 3 queda para la siguiente entrega.
+- Archivos y commit: mobile/ (proyecto generado) — [23da6a3]
+- Verificación: La app abrió en el iPhone con Expo Go mostrando la pantalla inicial; package.json confirma SDK 58.
+- Aprendizaje: Quedó la app base corriendo en el dispositivo. Se entendió que la versión de Expo Go debe coincidir con el SDK del proyecto y que create-expo-app no debe crear un segundo repositorio dentro del principal.
