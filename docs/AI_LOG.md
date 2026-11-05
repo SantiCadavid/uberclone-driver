@@ -39,6 +39,19 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Enlace a la conversación: [PEGAR ENLACE DE SHARE]
 - Resumen de la respuesta: Se definió el alcance de la entrega (pestañas 1 y 2, validaciones, guardado en Firestore con estado pending) y un plan de 9 pasos. Se creó la app con create-expo-app (plantilla blank, SDK 58) en la carpeta mobile/.
 - Qué se usó / modificó / descartó: Se usó la plantilla blank en lugar de la de Expo Router. La Pestaña 3 queda para la siguiente entrega.
-- Archivos y commit: mobile/ (proyecto generado) — [23da6a3]
+- Archivos y commit: mobile/ (proyecto generado) — [db99547]
 - Verificación: La app abrió en el iPhone con Expo Go mostrando la pantalla inicial; package.json confirma SDK 58.
 - Aprendizaje: Quedó la app base corriendo en el dispositivo. Se entendió que la versión de Expo Go debe coincidir con el SDK del proyecto y que create-expo-app no debe crear un segundo repositorio dentro del principal.
+
+### Entrada #5
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Crear la navegación base de la app (Stack para Login → Registro y Tabs para las pestañas del registro)
+- Prompt: "Crear la navegación con React Navigation 7, igual a la usada en clase (native-stack y bottom-tabs): pantalla de Login que lleve al registro del conductor con dos pestañas (Datos personales y Vehículo). Se confirma que el profesor exige inicio de sesión."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se instaló React Navigation 7 y sus dependencias nativas, se creó RootNavigator (native-stack) con Login y Registro, y RegisterTabs (bottom-tabs) anidado con las dos pestañas como pantallas vacías. Se agregó theme/colors.js para colores explícitos.
+- Qué se usó / modificó / descartó: Se usó tal cual. Se decidió usar Firebase Auth con correo y contraseña para el inicio de sesión; la contraseña no se guarda en Firestore.
+- Archivos y commit: mobile/App.js, mobile/src/navigation/*, mobile/src/screens/*, mobile/src/theme/colors.js — [HASH]
+- Verificación: En el iPhone se navegó de Login a Registro, se cambió entre las dos pestañas y se volvió con la flecha atrás.
+- Aprendizaje: Quedó la estructura de navegación de la app. Se entendió la navegación anidada (un Tab dentro de una pantalla del Stack) y por qué las pestañas convienen para un formulario dividido: las pantallas no se destruyen al cambiar de pestaña.

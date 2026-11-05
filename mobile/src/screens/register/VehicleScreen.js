@@ -1,0 +1,21 @@
+// AI-assisted: see docs/AI_LOG.md #5
+import { StyleSheet, Text, View } from 'react-native';
+import { colors } from '../../theme/colors';
+
+export default function VehicleScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>Pestaña 2 — Vehículo</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: { fontSize: 18, color: colors.text },
+});
