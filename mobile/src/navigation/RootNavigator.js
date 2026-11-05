@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #5, #6
+// AI-assisted: see docs/AI_LOG.md #5, #6, #10
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import { colors } from '../theme/colors';
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, registrationInProgress } = useAuth();
 
   // While Firebase checks for a saved session, show a loader instead of flashing the Login
   if (initializing) {
@@ -21,9 +21,12 @@ export default function RootNavigator() {
     );
   }
 
+  // During registration the account exists before its profile is saved; stay on Register
+  const showDriverApp = user && !registrationInProgress;
+
   return (
     <Stack.Navigator>
-      {user ? (
+      {showDriverApp ? (
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
       ) : (
         <>

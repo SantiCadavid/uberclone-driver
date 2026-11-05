@@ -94,3 +94,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/context/RegistrationContext.js, mobile/src/services/imagePicker.js, mobile/src/components/form/*, mobile/src/screens/register/PersonalDataScreen.js, mobile/src/navigation/RegisterTabs.js — [f3dd30c]
 - Verificación: En el iPhone se probaron campos vacíos, nombre con números, documento corto, menor de edad, contraseñas distintas, foto con cámara, permiso de cámara denegado (mensaje sin cerrar la app) y que los datos se conservan al cambiar de pestaña.
 - Aprendizaje: Quedó lista la Pestaña 1. Se entendió cómo un contexto comparte el estado del formulario entre pestañas, para qué sirven useMemo (no recalcular la validación en cada render) y useCallback (no recrear funciones), y por qué los errores solo aparecen en campos ya tocados.
+
+### Entrada #9
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Construir la Pestaña 2 del registro (vehículo) y habilitar Enviar solo con ambas pestañas válidas
+- Prompt: "Construir la pantalla de la Pestaña 2 del registro con los campos del vehículo de la guía (categoría, placa colombiana en mayúsculas, marca, modelo, año, color, capacidad con XL mínimo 6 y foto donde se vea la placa), reutilizando los componentes y el contexto de la Pestaña 1, y habilitar el botón Enviar registro solo cuando las dos pestañas estén completas y válidas."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se reemplazó VehicleScreen con el formulario completo reutilizando TextField, SelectField, PhotoField y RegistrationContext. Se agregó un resumen del estado de cada pestaña con accesos para corregir y un botón Enviar deshabilitado hasta que todo sea válido, con una acción temporal que se reemplaza en el paso 9.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/screens/register/VehicleScreen.js — [3c2e7af]
+- Verificación: En el iPhone se probaron placa inválida y con guion, año futuro, capacidad 4 al cambiar a XL, foto del vehículo y que el botón solo se habilita con ambas pestañas completas.
+- Aprendizaje: Quedó lista la Pestaña 2. Se entendió el valor de los componentes reutilizables (este paso no necesitó archivos nuevos) y cómo una validación que depende de otro campo (capacidad según categoría) se recalcula sola con useMemo.

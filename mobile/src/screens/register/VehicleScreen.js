@@ -1,6 +1,7 @@
-// AI-assisted: see docs/AI_LOG.md #9
+// AI-assisted: see docs/AI_LOG.md #9, #10
 import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,7 +10,9 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 import { useRegistration } from '../../context/RegistrationContext';
+import { getRegistrationErrorMessage, registerDriver } from '../../services/driverService';
 import TextField from '../../components/form/TextField';
 import SelectField from '../../components/form/SelectField';
 import PhotoField from '../../components/form/PhotoField';
@@ -37,7 +40,9 @@ function TabStatus({ label, valid, actionLabel, onAction }) {
 }
 
 export default function VehicleScreen({ navigation }) {
+  const { setRegistrationInProgress } = useAuth();
   const {
+    personalData,
     vehicleData,
     vehicleErrors,
     vehicleTouched,
@@ -48,14 +53,15 @@ export default function VehicleScreen({ navigation }) {
     touchAllPersonal,
   } = useRegistration();
   const scrollRef = useRef(null);
-  const [submitMessage, setSubmitMessage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const errorFor = (field) => (vehicleTouched[field] ? vehicleErrors[field] : null);
 
   const personalValid = !hasErrors(personalErrors);
   const vehicleValid = !hasErrors(vehicleErrors);
   // The guide: "Enviar registro" is enabled only when every tab is complete and valid
-  const canSubmit = personalValid && vehicleValid;
+  const canSubmit = personalValid && vehicleValid && !submitting;
 
   const showVehicleErrors = () => {
     touchAllVehicle();
@@ -67,9 +73,20 @@ export default function VehicleScreen({ navigation }) {
     navigation.navigate('PersonalData');
   };
 
-  // TEMPORARY: replaced in step 9 by the real registration (Auth + Firestore)
-  const handleSubmit = () => {
-    setSubmitMessage('Todo listo para enviar. El envío se conecta en el paso 9.');
+  const handleSubmit = async () => {
+    if (submitting) return; // Prevents a double submit
+    setSubmitting(true);
+    setSubmitError(null);
+    setRegistrationInProgress(true);
+    try {
+      await registerDriver(personalData, vehicleData);
+      // Success: when the flag goes back to false, RootNavigator shows Home
+    } catch (error) {
+      setSubmitError(getRegistrationErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+      setRegistrationInProgress(false);
+    }
   };
 
   return (
@@ -185,9 +202,13 @@ export default function VehicleScreen({ navigation }) {
           onPress={handleSubmit}
           disabled={!canSubmit}
         >
-          <Text style={styles.buttonText}>Enviar registro</Text>
+          {submitting ? (
+            <ActivityIndicator color={colors.primaryText} />
+          ) : (
+            <Text style={styles.buttonText}>Enviar registro</Text>
+          )}
         </Pressable>
-        {submitMessage && <Text style={styles.submitMessage}>{submitMessage}</Text>}
+        {submitError && <Text style={styles.submitError}>{submitError}</Text>}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -223,5 +244,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { backgroundColor: '#9CA3AF' },
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  submitMessage: { color: colors.text, textAlign: 'center', marginTop: 12 },
+  submitError: { color: colors.error, textAlign: 'center', marginTop: 12, fontWeight: '600' },
 });

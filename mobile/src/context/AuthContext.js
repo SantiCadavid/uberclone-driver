@@ -1,5 +1,5 @@
-// AI-assisted: see docs/AI_LOG.md #6
-import { createContext, useContext, useEffect, useState } from 'react';
+// AI-assisted: see docs/AI_LOG.md #6, #10
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { subscribeToAuthChanges } from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -7,6 +7,8 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  // While true, the navigator keeps the register screen even if Firebase already signed in
+  const [registrationInProgress, setRegistrationInProgress] = useState(false);
 
   useEffect(() => {
     // Firebase calls this once on start (restored session or null) and on every login/logout
@@ -19,11 +21,12 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ user, initializing }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, initializing, registrationInProgress, setRegistrationInProgress }),
+    [user, initializing, registrationInProgress],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
