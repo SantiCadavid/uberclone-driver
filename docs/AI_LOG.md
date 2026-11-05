@@ -107,3 +107,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/screens/register/VehicleScreen.js — [3c2e7af]
 - Verificación: En el iPhone se probaron placa inválida y con guion, año futuro, capacidad 4 al cambiar a XL, foto del vehículo y que el botón solo se habilita con ambas pestañas completas.
 - Aprendizaje: Quedó lista la Pestaña 2. Se entendió el valor de los componentes reutilizables (este paso no necesitó archivos nuevos) y cómo una validación que depende de otro campo (capacidad según categoría) se recalcula sola con useMemo.
+
+### Entrada #10
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Registrar al conductor: crear la cuenta en Firebase Auth y guardar su perfil en Firestore con estado pendiente
+- Prompt: "Conectar el botón Enviar registro: crear el usuario con correo y contraseña en Firebase Auth y guardar el perfil del conductor en Firestore (drivers/{uid}) con estado pending, sin guardar la contraseña, evitando que la navegación cambie antes de terminar, revirtiendo la cuenta si falla el guardado e impidiendo el doble envío."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó buildDriverDocument (función pura y probada que arma el documento sin contraseña y normaliza los datos), driverService.registerDriver (Auth + setDoc con reversión por deleteUser) y una bandera registrationInProgress en AuthContext para que el navegador no cambie a Inicio antes de guardar el perfil.
+- Qué se usó / modificó / descartó: Las fotos quedan temporalmente en null; se suben con Cloudinary en el paso 9b.
+- Archivos y commit: mobile/src/utils/driverDocument.js, mobile/src/utils/__tests__/driverDocument.test.js, mobile/src/services/driverService.js, mobile/src/context/AuthContext.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/register/VehicleScreen.js — [a64f131]
+- Verificación: npm test con 30 pruebas en verde. En el iPhone se registró un conductor nuevo; el usuario apareció en Authentication y el documento drivers/{uid} en Firestore con approvalStatus pending y sin contraseña. Se probó correo ya registrado y modo avión con sus mensajes.
+- Aprendizaje: Quedó el registro guardado en la base de datos, que es el requisito central de la entrega. Se entendió por qué el perfil usa el mismo id que la cuenta, por qué hay que revertir la cuenta si falla el guardado, y cómo una bandera en el contexto controla cuándo cambia la navegación.

@@ -1,6 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #10
+// AI-assisted: see docs/AI_LOG.md #10, #11
 import { deleteUser } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getAuthErrorMessage, registerWithEmail } from './authService';
 import { buildDriverDocument } from '../utils/driverDocument';
@@ -19,6 +19,16 @@ export async function registerDriver(personalData, vehicleData) {
     await deleteUser(user).catch(() => {});
     throw error;
   }
+}
+
+// Real-time listener on drivers/{uid}. Returns the unsubscribe function for useEffect cleanup.
+// onData receives the driver object, or null when the document does not exist.
+export function subscribeToDriver(uid, onData, onError) {
+  return onSnapshot(
+    doc(db, 'drivers', uid),
+    (snapshot) => onData(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
+    onError,
+  );
 }
 
 export function getRegistrationErrorMessage(error) {
