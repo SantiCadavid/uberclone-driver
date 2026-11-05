@@ -68,3 +68,17 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/services/firebase.js, authService.js, context/AuthContext.js, utils/validators.js, screens/auth/LoginScreen.js, screens/home/HomeScreen.js, navigation/RootNavigator.js, App.js — [HASc56d76e]
 - Verificación: Se probaron campos vacíos, correo inválido, contraseña incorrecta, inicio correcto, persistencia al cerrar y reabrir Expo Go, cierre de sesión y modo avión, con los mensajes esperados.
 - Aprendizaje: Quedó funcionando el inicio de sesión. Se entendió cómo una suscripción (onAuthStateChanged) se abre en useEffect y se cierra en su función de limpieza, cómo useContext comparte la sesión con toda la app y por qué el navegador cambia de pantallas según el estado en vez de usar navigate.
+
+### Entrada #7
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar y probar las validaciones de las pestañas 1 (datos personales) y 2 (vehículo) del registro
+- Prompt: "Crear las validaciones del registro del conductor según la sección 2 de la guía (nombre, documento, celular, mayoría de edad, género, correo, idioma, contraseña; categoría, placa colombiana, marca, modelo, año, color, capacidad con XL mínimo 6, fotos) como funciones puras con reglas configurables, y probarlas con casos automáticos antes de construir los formularios."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó config/registration.js con límites y listas de opciones, se ampliaron los validadores en utils/validators.js con funciones puras por campo y por pestaña, y se agregaron pruebas con Jest (jest-expo) usando una fecha fija para que los resultados no dependan del día.
+- Qué se usó / modificó / descartó: Se usó tal cual. Decisiones propias: contraseña mínima de 8 caracteres con letra y número (Firebase exige 6); la placa acepta espacios y guiones y se normaliza a ABC123.
+- Archivos y commit: mobile/src/config/registration.js, mobile/src/utils/validators.js, mobile/src/utils/__tests__/validators.test.js, mobile/package.json — [a44b405]
+- Verificación: npm test pasó todos los casos; al cambiar xlMinCapacity a 5 falló la prueba de capacidad XL, y al restaurarlo volvió a pasar.
+- Aprendizaje: Quedaron listas y probadas todas las reglas del registro. Se entendió la ventaja de las funciones puras (se prueban sin abrir la app) y por qué pasar la fecha de hoy como parámetro hace las pruebas reproducibles.
+
