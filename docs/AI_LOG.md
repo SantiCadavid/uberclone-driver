@@ -82,3 +82,15 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Verificación: npm test pasó todos los casos; al cambiar xlMinCapacity a 5 falló la prueba de capacidad XL, y al restaurarlo volvió a pasar.
 - Aprendizaje: Quedaron listas y probadas todas las reglas del registro. Se entendió la ventaja de las funciones puras (se prueban sin abrir la app) y por qué pasar la fecha de hoy como parámetro hace las pruebas reproducibles.
 
+### Entrada #8
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Construir la Pestaña 1 del registro (datos personales) con estado compartido entre pestañas
+- Prompt: "Construir la pantalla de la Pestaña 1 del registro del conductor con todos los campos de la guía más contraseña: foto con cámara o galería, fecha de nacimiento, listas desplegables, errores debajo de cada campo usando los validadores ya probados, manejo de permisos denegados y un estado compartido entre las dos pestañas."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó RegistrationContext (useContext, useCallback, useMemo) con datos, errores y campos tocados de ambas pestañas; componentes de formulario reutilizables (TextField, SelectField con Modal, DateField, PhotoField); un servicio para cámara y galería con manejo de permisos; y la pantalla PersonalDataScreen.
+- Qué se usó / modificó / descartó: Se descartó @react-native-picker/picker y se hizo una lista desplegable propia con Modal para no agregar dependencias y verse mejor en iPhone.
+- Archivos y commit: mobile/src/context/RegistrationContext.js, mobile/src/services/imagePicker.js, mobile/src/components/form/*, mobile/src/screens/register/PersonalDataScreen.js, mobile/src/navigation/RegisterTabs.js — [f3dd30c]
+- Verificación: En el iPhone se probaron campos vacíos, nombre con números, documento corto, menor de edad, contraseñas distintas, foto con cámara, permiso de cámara denegado (mensaje sin cerrar la app) y que los datos se conservan al cambiar de pestaña.
+- Aprendizaje: Quedó lista la Pestaña 1. Se entendió cómo un contexto comparte el estado del formulario entre pestañas, para qué sirven useMemo (no recalcular la validación en cada render) y useCallback (no recrear funciones), y por qué los errores solo aparecen en campos ya tocados.
