@@ -133,3 +133,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/services/driverService.js, mobile/src/hooks/useDriverProfile.js, mobile/src/screens/home/HomeScreen.js — [84f6972]
 - Verificación: Al cambiar approvalStatus a approved en la consola de Firebase, la insignia cambió sola en el iPhone sin recargar; se probó también la cuenta sin perfil y el cierre de sesión.
 - Aprendizaje: Quedó visible el resultado del registro y la simulación de aprobación que pide la guía. Se entendió la diferencia entre leer un documento una vez y suscribirse con onSnapshot, y por qué la función de limpieza del useEffect es obligatoria para cerrar la suscripción.
+
+### Entrada #12
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Corregir reglas lógicas del registro detectadas después de la primera entrega y planear el resto del proyecto
+- Prompt: "Permitir vehículos del año siguiente (modelos 2027 que ya se venden en 2026) y revisar qué otras reglas lógicas faltan en la validación del registro; planear el desarrollo completo del proyecto para la entrega final del 12 de noviembre."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregaron al archivo de configuración el año máximo actual + 1, los rangos de capacidad por categoría (Económico y Premium 1–4, XL 6–8), el prefijo 3 del celular, la edad máxima de 80 años y la exigencia de nombre y apellido; también se rechaza el documento que empieza por 0. Se actualizaron y ampliaron las pruebas. Se identificó que Directions y Distance Matrix están en estado Legacy y no se pueden activar en proyectos nuevos, por lo que se usará OSRM.
+- Qué se usó / modificó / descartó: Decisión propia: el año máximo se aparta de la frase literal de la guía ("no mayor al año actual") por la realidad del mercado y es configurable. Quedan para después la antigüedad mínima del vehículo (consultar al profesor) y la unicidad de placa y documento.
+- Archivos y commit: mobile/src/config/registration.js, mobile/src/utils/validators.js, mobile/src/utils/__tests__/validators.test.js, mobile/src/screens/register/VehicleScreen.js — [e3514fe]
+- Verificación: npm test con 35 pruebas en verde; en el iPhone se probaron año 2027 y 2028, capacidad 5 en Económico, celular que no empieza por 3 y nombre sin apellido.
+- Aprendizaje: Las validaciones deben reflejar la realidad del negocio, no solo el formato. Tener los límites en configuración y probados permite ajustar una regla cambiando un número.
