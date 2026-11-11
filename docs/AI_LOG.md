@@ -146,3 +146,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/config/registration.js, mobile/src/utils/validators.js, mobile/src/utils/__tests__/validators.test.js, mobile/src/screens/register/VehicleScreen.js — [e3514fe]
 - Verificación: npm test con 35 pruebas en verde; en el iPhone se probaron año 2027 y 2028, capacidad 5 en Económico, celular que no empieza por 3 y nombre sin apellido.
 - Aprendizaje: Las validaciones deben reflejar la realidad del negocio, no solo el formato. Tener los límites en configuración y probados permite ajustar una regla cambiando un número.
+
+### Entrada #13
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Crear la base de la app del conductor: menú lateral, mapa, interruptor Disponible y seguimiento de ubicación
+- Prompt: "Crear la navegación con Drawer (Inicio, Historial, Ganancias, Perfil) y la pantalla de Inicio con mapa y un interruptor Disponible / No disponible, bloqueado si la cuenta no está aprobada, con un hook useDriverLocation que envíe la ubicación a Firestore cada pocos segundos mientras está Disponible y la detenga con la función de limpieza del useEffect."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregó DriverDrawer con cierre de sesión, DriverContext para compartir el perfil con una sola suscripción, el hook useDriverLocation (permiso, posición inicial y watchPositionAsync con escritura limitada a una cada 5 s y limpieza), y una HomeScreen con mapa, insignia de aprobación e interruptor con manejo de permisos, desconexión y aprobación revocada.
+- Qué se usó / modificó / descartó: Se usó expo-location en lugar de @react-native-community/geolocation porque es el equivalente que funciona en Expo Go. [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/App.js, mobile/src/config/location.js, mobile/src/utils/withTimeout.js, mobile/src/services/driverService.js, mobile/src/hooks/useDriverLocation.js, mobile/src/context/DriverContext.js, mobile/src/navigation/DriverDrawer.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/home/HomeScreen.js, mobile/src/screens/common/ComingSoonScreen.js — [f8312ef]
+- Verificación: En el iPhone: interruptor bloqueado en Pendiente, habilitado al aprobar desde la consola, ubicación escrita en Firestore al estar Disponible y detenida al apagarlo, apagado automático al revocar la aprobación, cierre de sesión que deja isAvailable en false y permiso de ubicación denegado sin cierre de la app.
+- Aprendizaje: Se entendió cómo limpiar una suscripción asíncrona (bandera cancelled), por qué limitar las escrituras a Firestore con useRef, y cómo un contexto evita suscripciones duplicadas al mismo documento.

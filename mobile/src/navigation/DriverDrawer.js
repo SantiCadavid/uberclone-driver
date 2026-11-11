@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #13
+// AI-assisted: see docs/AI_LOG.md #13, #14
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
@@ -10,6 +10,7 @@ import { useDriver } from '../context/DriverContext';
 import { logout } from '../services/authService';
 import { setDriverAvailability } from '../services/driverService';
 import HomeScreen from '../screens/home/HomeScreen';
+import PassengerSimulatorScreen from '../screens/simulator/PassengerSimulatorScreen';
 import ComingSoonScreen from '../screens/common/ComingSoonScreen';
 import { colors } from '../theme/colors';
 
@@ -72,6 +73,11 @@ export default function DriverDrawer() {
         name="Profile"
         component={ProfileScreen}
         options={{ title: 'Perfil y configuración' }}
+      />
+      <Drawer.Screen
+        name="PassengerSimulator"
+        component={PassengerSimulatorScreen}
+        options={{ title: 'Simulador de pasajero' }}
       />
     </Drawer.Navigator>
   );
