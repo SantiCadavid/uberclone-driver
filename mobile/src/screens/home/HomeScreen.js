@@ -1,126 +1,248 @@
-// AI-assisted: see docs/AI_LOG.md #6, #11
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { useDriverProfile } from '../../hooks/useDriverProfile';
-import { getAuthErrorMessage, logout } from '../../services/authService';
-import { VEHICLE_CATEGORY_OPTIONS } from '../../config/registration';
+// AI-assisted: see docs/AI_LOG.md #11, #13, #15
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import { useDriver } from '../../context/DriverContext';
+import { useDriverLocation } from '../../hooks/useDriverLocation';
+import { useTripRequests } from '../../hooks/useTripRequests';
+import { setDriverAvailability } from '../../services/driverService';
+import TripRequestCard from '../../components/trip/TripRequestCard';
 import { APPROVAL_STATUS } from '../../utils/driverDocument';
+import { withTimeout } from '../../utils/withTimeout';
+import { LOCATION_CONFIG } from '../../config/location';
 import { colors } from '../../theme/colors';
 
 const STATUS_DISPLAY = {
-  [APPROVAL_STATUS.pending]: {
-    label: 'Pendiente de aprobación',
-    detail: 'Estamos revisando tus datos. No puedes ponerte Disponible hasta que tu cuenta sea aprobada.',
-    color: '#B45309',
-    background: '#FEF3C7',
-  },
-  [APPROVAL_STATUS.approved]: {
-    label: 'Aprobado',
-    detail: 'Tu cuenta fue aprobada. El modo Disponible llega en la siguiente entrega.',
-    color: '#15803D',
-    background: '#DCFCE7',
-  },
+  [APPROVAL_STATUS.pending]: { label: 'Pendiente de aprobación', color: '#B45309', background: '#FEF3C7' },
+  [APPROVAL_STATUS.approved]: { label: 'Aprobado', color: '#15803D', background: '#DCFCE7' },
 };
 
-const categoryLabel = (value) =>
-  VEHICLE_CATEGORY_OPTIONS.find((option) => option.value === value)?.label ?? value;
+const NOTICE_COLORS = { ok: '#15803D', info: colors.muted, error: colors.error };
+
+const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
 
 export default function HomeScreen() {
-  const { user } = useAuth();
-  const { driver, loading, error } = useDriverProfile(user?.uid);
-  const [logoutError, setLogoutError] = useState(null);
+  const { uid, driver, loading, error } = useDriver();
+  const [toggling, setToggling] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const mapRef = useRef(null);
+  const centeredRef = useRef(false);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (logoutFailure) {
-      setLogoutError(getAuthErrorMessage(logoutFailure));
-    }
-  };
+  const approved = driver?.approvalStatus === APPROVAL_STATUS.approved;
+  const isAvailable = Boolean(driver?.isAvailable);
+  const receiving = isAvailable && approved;
 
-  const renderContent = () => {
-    if (loading) {
-      return <ActivityIndicator size="large" color={colors.primary} />;
-    }
-    if (error) {
-      return <Text style={styles.errorText}>{error}</Text>;
-    }
-    if (!driver) {
-      // E.g. an account created by hand in the console, without a driver profile
-      return (
-        <Text style={styles.note}>
-          No encontramos tu perfil de conductor. Cierra sesión y completa el registro.
-        </Text>
+  const {
+    location,
+    permissionDenied,
+    error: locationError,
+  } = useDriverLocation({ uid, tracking: receiving });
+
+  const {
+    request,
+    secondsLeft,
+    processing,
+    notice,
+    error: requestsError,
+    accept,
+    reject,
+  } = useTripRequests({ driverId: uid, enabled: receiving });
+
+  // Center the map the first time the driver's position is known
+  useEffect(() => {
+    if (location && !centeredRef.current) {
+      centeredRef.current = true;
+      mapRef.current?.animateToRegion(
+        { ...location, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+        600,
       );
     }
+  }, [location]);
 
-    const status = STATUS_DISPLAY[driver.approvalStatus] ?? STATUS_DISPLAY[APPROVAL_STATUS.pending];
+  // When a new request arrives, fit the map to show driver, pickup and destination
+  useEffect(() => {
+    if (!request) return;
+    const points = [toLatLng(request.origin), toLatLng(request.destination)];
+    if (location) points.push(location);
+    mapRef.current?.fitToCoordinates(points, {
+      edgePadding: { top: 80, right: 60, bottom: 420, left: 60 },
+      animated: true,
+    });
+  }, [request?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Safety net: if the account stops being approved while available, go offline
+  useEffect(() => {
+    if (uid && driver && isAvailable && !approved) {
+      setDriverAvailability(uid, false).catch(() => {});
+    }
+  }, [uid, driver, isAvailable, approved]);
+
+  const handleToggle = useCallback(
+    async (nextValue) => {
+      setActionError(null);
+      if (nextValue && !approved) {
+        setActionError('Tu cuenta debe estar aprobada para ponerte Disponible.');
+        return;
+      }
+      if (nextValue && permissionDenied) {
+        setActionError('Activa el permiso de ubicación en Configuración para ponerte Disponible.');
+        return;
+      }
+      setToggling(true);
+      try {
+        await withTimeout(
+          setDriverAvailability(uid, nextValue),
+          LOCATION_CONFIG.availabilityTimeoutMs,
+        );
+      } catch (toggleError) {
+        setActionError('No se pudo cambiar tu estado. Revisa tu conexión.');
+      } finally {
+        setToggling(false);
+      }
+    },
+    [approved, permissionDenied, uid],
+  );
+
+  if (loading) {
     return (
-      <>
-        <Text style={styles.title}>Hola, {driver.fullName}</Text>
-        <Text style={styles.email}>{driver.email}</Text>
-
-        <View style={[styles.badge, { backgroundColor: status.background }]}>
-          <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
-        </View>
-        <Text style={styles.note}>{status.detail}</Text>
-
-        <View style={styles.vehicleBox}>
-          <Text style={styles.vehicleTitle}>Tu vehículo</Text>
-          <Text style={styles.vehicleText}>
-            {driver.vehicle.brand} {driver.vehicle.model} · {driver.vehicle.year}
-          </Text>
-          <Text style={styles.vehicleText}>
-            Placa {driver.vehicle.plate} · {categoryLabel(driver.vehicle.category)}
-          </Text>
-        </View>
-      </>
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
     );
-  };
+  }
+
+  if (error || !driver) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>
+          {error ?? 'No encontramos tu perfil de conductor. Cierra sesión desde el menú y completa el registro.'}
+        </Text>
+      </View>
+    );
+  }
+
+  const status = STATUS_DISPLAY[driver.approvalStatus] ?? STATUS_DISPLAY[APPROVAL_STATUS.pending];
+  const firstName = driver.fullName.split(' ')[0];
+  const visibleError =
+    actionError ??
+    requestsError ??
+    locationError ??
+    (permissionDenied ? 'Sin permiso de ubicación: actívalo en Configuración para ponerte Disponible.' : null);
 
   return (
-    <View style={styles.container}>
-      {renderContent()}
+    <View style={styles.flex}>
+      <MapView
+        ref={mapRef}
+        style={StyleSheet.absoluteFill}
+        initialRegion={LOCATION_CONFIG.defaultRegion}
+        showsUserLocation={!permissionDenied}
+      >
+        {request && (
+          <>
+            <Marker
+              coordinate={toLatLng(request.origin)}
+              title="Recogida"
+              description={request.origin.address}
+              pinColor="green"
+            />
+            <Marker
+              coordinate={toLatLng(request.destination)}
+              title="Destino"
+              description={request.destination.address}
+              pinColor="red"
+            />
+            {request.routePath?.length > 1 && (
+              <Polyline coordinates={request.routePath} strokeWidth={4} strokeColor={colors.primary} />
+            )}
+          </>
+        )}
+      </MapView>
 
-      <Pressable style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Cerrar sesión</Text>
-      </Pressable>
-      {logoutError && <Text style={styles.errorText}>{logoutError}</Text>}
+      {request ? (
+        <TripRequestCard
+          request={request}
+          secondsLeft={secondsLeft}
+          processing={processing}
+          onAccept={accept}
+          onReject={reject}
+        />
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.greeting}>Hola, {firstName}</Text>
+          <View style={[styles.badge, { backgroundColor: status.background }]}>
+            <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
+          </View>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>{isAvailable ? 'Disponible' : 'No disponible'}</Text>
+            {toggling ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Switch
+                value={isAvailable}
+                onValueChange={handleToggle}
+                disabled={!approved}
+                trackColor={{ true: '#15803D' }}
+              />
+            )}
+          </View>
+
+          {!approved && (
+            <Text style={styles.note}>Podrás ponerte Disponible cuando tu cuenta sea aprobada.</Text>
+          )}
+          {receiving && (
+            <Text style={styles.note}>Esperando solicitudes. Compartiendo tu ubicación.</Text>
+          )}
+          {notice && (
+            <Text style={[styles.notice, { color: NOTICE_COLORS[notice.type] }]}>{notice.text}</Text>
+          )}
+          {visibleError && <Text style={styles.errorText}>{visibleError}</Text>}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  flex: { flex: 1 },
+  centered: {
     flex: 1,
-    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+    backgroundColor: colors.background,
   },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text, textAlign: 'center' },
-  email: { fontSize: 15, color: colors.muted, marginTop: 4 },
-  badge: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999, marginTop: 20 },
-  badgeText: { fontSize: 15, fontWeight: 'bold' },
-  note: { fontSize: 14, color: colors.muted, textAlign: 'center', marginTop: 12 },
-  vehicleBox: {
-    alignSelf: 'stretch',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+  card: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 32,
+    backgroundColor: colors.background,
+    borderRadius: 12,
     padding: 16,
-    marginTop: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
-  vehicleTitle: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 6 },
-  vehicleText: { fontSize: 15, color: colors.text, marginTop: 2 },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 32,
+  greeting: { fontSize: 20, fontWeight: 'bold', color: colors.text },
+  badge: {
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    marginTop: 8,
   },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  errorText: { color: colors.error, textAlign: 'center', marginTop: 12 },
+  badgeText: { fontSize: 13, fontWeight: 'bold' },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  switchLabel: { fontSize: 17, fontWeight: '600', color: colors.text },
+  note: { fontSize: 14, color: colors.muted, marginTop: 8 },
+  notice: { fontSize: 14, fontWeight: '600', marginTop: 8 },
+  errorText: { fontSize: 14, color: colors.error, marginTop: 8, textAlign: 'center' },
 });

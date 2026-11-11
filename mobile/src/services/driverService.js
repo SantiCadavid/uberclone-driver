@@ -1,6 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #10, #11
+// AI-assisted: see docs/AI_LOG.md #10, #11, #13
 import { deleteUser } from 'firebase/auth';
-import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getAuthErrorMessage, registerWithEmail } from './authService';
 import { buildDriverDocument } from '../utils/driverDocument';
@@ -29,6 +29,19 @@ export function subscribeToDriver(uid, onData, onError) {
     (snapshot) => onData(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null),
     onError,
   );
+}
+
+export function setDriverAvailability(uid, isAvailable) {
+  return updateDoc(doc(db, 'drivers', uid), {
+    isAvailable,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function updateDriverLocation(uid, { latitude, longitude }) {
+  return updateDoc(doc(db, 'drivers', uid), {
+    location: { lat: latitude, lng: longitude, updatedAt: serverTimestamp() },
+  });
 }
 
 export function getRegistrationErrorMessage(error) {

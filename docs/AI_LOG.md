@@ -120,3 +120,67 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/utils/driverDocument.js, mobile/src/utils/__tests__/driverDocument.test.js, mobile/src/services/driverService.js, mobile/src/context/AuthContext.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/register/VehicleScreen.js — [a64f131]
 - Verificación: npm test con 30 pruebas en verde. En el iPhone se registró un conductor nuevo; el usuario apareció en Authentication y el documento drivers/{uid} en Firestore con approvalStatus pending y sin contraseña. Se probó correo ya registrado y modo avión con sus mensajes.
 - Aprendizaje: Quedó el registro guardado en la base de datos, que es el requisito central de la entrega. Se entendió por qué el perfil usa el mismo id que la cuenta, por qué hay que revertir la cuenta si falla el guardado, y cómo una bandera en el contexto controla cuándo cambia la navegación.
+
+### Entrada #11
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Mostrar en Inicio el perfil del conductor y su estado de aprobación en tiempo real
+- Prompt: "Después del registro, mostrar en la pantalla de Inicio el nombre, el vehículo y el estado de aprobación del conductor leídos de Firestore en tiempo real con onSnapshot, mediante un hook personalizado con useEffect y función de limpieza, manejando carga, error y perfil inexistente."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregó subscribeToDriver (onSnapshot sobre drivers/{uid}) en driverService, el hook useDriverProfile que abre y cierra la suscripción, y una HomeScreen que muestra la insignia Pendiente o Aprobado, los datos del vehículo y estados de carga, error y sin perfil.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/services/driverService.js, mobile/src/hooks/useDriverProfile.js, mobile/src/screens/home/HomeScreen.js — [84f6972]
+- Verificación: Al cambiar approvalStatus a approved en la consola de Firebase, la insignia cambió sola en el iPhone sin recargar; se probó también la cuenta sin perfil y el cierre de sesión.
+- Aprendizaje: Quedó visible el resultado del registro y la simulación de aprobación que pide la guía. Se entendió la diferencia entre leer un documento una vez y suscribirse con onSnapshot, y por qué la función de limpieza del useEffect es obligatoria para cerrar la suscripción.
+
+### Entrada #12
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Corregir reglas lógicas del registro detectadas después de la primera entrega y planear el resto del proyecto
+- Prompt: "Permitir vehículos del año siguiente (modelos 2027 que ya se venden en 2026) y revisar qué otras reglas lógicas faltan en la validación del registro; planear el desarrollo completo del proyecto para la entrega final del 12 de noviembre."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregaron al archivo de configuración el año máximo actual + 1, los rangos de capacidad por categoría (Económico y Premium 1–4, XL 6–8), el prefijo 3 del celular, la edad máxima de 80 años y la exigencia de nombre y apellido; también se rechaza el documento que empieza por 0. Se actualizaron y ampliaron las pruebas. Se identificó que Directions y Distance Matrix están en estado Legacy y no se pueden activar en proyectos nuevos, por lo que se usará OSRM.
+- Qué se usó / modificó / descartó: Decisión propia: el año máximo se aparta de la frase literal de la guía ("no mayor al año actual") por la realidad del mercado y es configurable. Quedan para después la antigüedad mínima del vehículo (consultar al profesor) y la unicidad de placa y documento.
+- Archivos y commit: mobile/src/config/registration.js, mobile/src/utils/validators.js, mobile/src/utils/__tests__/validators.test.js, mobile/src/screens/register/VehicleScreen.js — [e3514fe]
+- Verificación: npm test con 35 pruebas en verde; en el iPhone se probaron año 2027 y 2028, capacidad 5 en Económico, celular que no empieza por 3 y nombre sin apellido.
+- Aprendizaje: Las validaciones deben reflejar la realidad del negocio, no solo el formato. Tener los límites en configuración y probados permite ajustar una regla cambiando un número.
+
+### Entrada #13
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Crear la base de la app del conductor: menú lateral, mapa, interruptor Disponible y seguimiento de ubicación
+- Prompt: "Crear la navegación con Drawer (Inicio, Historial, Ganancias, Perfil) y la pantalla de Inicio con mapa y un interruptor Disponible / No disponible, bloqueado si la cuenta no está aprobada, con un hook useDriverLocation que envíe la ubicación a Firestore cada pocos segundos mientras está Disponible y la detenga con la función de limpieza del useEffect."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregó DriverDrawer con cierre de sesión, DriverContext para compartir el perfil con una sola suscripción, el hook useDriverLocation (permiso, posición inicial y watchPositionAsync con escritura limitada a una cada 5 s y limpieza), y una HomeScreen con mapa, insignia de aprobación e interruptor con manejo de permisos, desconexión y aprobación revocada.
+- Qué se usó / modificó / descartó: Se usó expo-location en lugar de @react-native-community/geolocation porque es el equivalente que funciona en Expo Go. [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/App.js, mobile/src/config/location.js, mobile/src/utils/withTimeout.js, mobile/src/services/driverService.js, mobile/src/hooks/useDriverLocation.js, mobile/src/context/DriverContext.js, mobile/src/navigation/DriverDrawer.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/home/HomeScreen.js, mobile/src/screens/common/ComingSoonScreen.js — [f8312ef]
+- Verificación: En el iPhone: interruptor bloqueado en Pendiente, habilitado al aprobar desde la consola, ubicación escrita en Firestore al estar Disponible y detenida al apagarlo, apagado automático al revocar la aprobación, cierre de sesión que deja isAvailable en false y permiso de ubicación denegado sin cierre de la app.
+- Aprendizaje: Se entendió cómo limpiar una suscripción asíncrona (bandera cancelled), por qué limitar las escrituras a Firestore con useRef, y cómo un contexto evita suscripciones duplicadas al mismo documento.
+
+### Entrada #14
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el cálculo de tarifa y comisión, y un simulador de pasajero que cree solicitudes de viaje reales
+- Prompt: "Crear la función pura calculateFare con los valores de la guía en src/config/pricing.js (pesos enteros, redondeo a 100, comisión 20 %, propina completa al conductor) probada con el ejemplo de 8,5 km y 22 min, y un simulador de pasajero que cree viajes 'requested' en Firestore cerca del conductor, calculando ruta, distancia y duración una sola vez con un servicio gratuito."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se crearon config/pricing.js, calculateFare (pura, con pricing como parámetro) y utilidades geográficas con 10 pruebas. Se agregó routingService (OSRM para rutas y Nominatim para direcciones), tripService.createSimulatedTrip (documento trips con el modelo de la guía, commissionRate y routePath) y una pantalla de simulador en el menú lateral.
+- Qué se usó / modificó / descartó: Se descartó Google Distance Matrix/Directions porque están en estado Legacy y no se pueden habilitar en proyectos nuevos; se usó OSRM, que la guía acepta como alternativa.
+- Archivos y commit: mobile/src/config/pricing.js, mobile/src/config/trip.js, mobile/src/utils/calculateFare.js, mobile/src/utils/geo.js, mobile/src/utils/__tests__/calculateFare.test.js, mobile/src/utils/__tests__/geo.test.js, mobile/src/services/routingService.js, mobile/src/services/tripService.js, mobile/src/screens/simulator/PassengerSimulatorScreen.js, mobile/src/navigation/DriverDrawer.js — [a122e79]
+- Verificación: npm test con 45 pruebas en verde, incluido el ejemplo de la guía (Económico 19.200 / 3.840 / 15.360 y XL 26.900 / 5.380 / 21.520). En el iPhone se crearon solicitudes con tarjeta y efectivo que aparecieron en Firestore con todos los campos; en modo avión se mostró el mensaje de error sin cerrar la app.
+- Aprendizaje: Se entendió por qué el cálculo debe ser una sola función pura reutilizada, por qué manejar dinero en enteros, y por qué cada viaje guarda su commissionRate.
+
+### Entrada #15
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Recibir solicitudes de viaje en tiempo real con temporizador de 15 segundos y aceptar o rechazar
+- Prompt: "Crear el hook useTripRequests que escuche en tiempo real las solicitudes del conductor mientras está Disponible, mostrar en Inicio una tarjeta con origen, destino, distancia, duración, categoría, método de pago, tarifa y ganancia estimada, con un temporizador de 15 s que rechace automáticamente al llegar a cero, y manejadores de aceptar y rechazar con useCallback que impidan aceptar dos veces."
+- Resumen de la respuesta: Se agregaron a tripService la suscripción a solicitudes (onSnapshot con filtro por conductor y estado) y aceptar/rechazar con runTransaction. El hook useTripRequests maneja la suscripción, la cuenta regresiva desde createdAt con setInterval y su limpieza, el bloqueo de doble toque y la detección de cancelaciones. Se creó TripRequestCard y el mapa muestra la ruta con marcadores y Polyline.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/utils/format.js, mobile/src/utils/__tests__/format.test.js, mobile/src/services/tripService.js, mobile/src/hooks/useTripRequests.js, mobile/src/components/trip/TripRequestCard.js, mobile/src/screens/home/HomeScreen.js — [6e4f1d4]
+- Verificación: npm test con 46 pruebas en verde. En el iPhone se probaron la expiración a los 15 s (rejected/expired), el rechazo manual, la aceptación (accepted con acceptedAt), la cancelación desde la consola, el cambio a No disponible y el modo avión.
+- Aprendizaje: Se entendió por qué un temporizador y una suscripción deben cerrarse en la limpieza del useEffect, cómo una transacción evita condiciones de carrera al aceptar, y por qué medir el tiempo desde la creación del viaje y no desde que se muestra.
