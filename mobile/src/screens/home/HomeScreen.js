@@ -1,10 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #11, #13
+// AI-assisted: see docs/AI_LOG.md #11, #13, #15
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
-import MapView from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useDriver } from '../../context/DriverContext';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
+import { useTripRequests } from '../../hooks/useTripRequests';
 import { setDriverAvailability } from '../../services/driverService';
+import TripRequestCard from '../../components/trip/TripRequestCard';
 import { APPROVAL_STATUS } from '../../utils/driverDocument';
 import { withTimeout } from '../../utils/withTimeout';
 import { LOCATION_CONFIG } from '../../config/location';
@@ -15,6 +17,10 @@ const STATUS_DISPLAY = {
   [APPROVAL_STATUS.approved]: { label: 'Aprobado', color: '#15803D', background: '#DCFCE7' },
 };
 
+const NOTICE_COLORS = { ok: '#15803D', info: colors.muted, error: colors.error };
+
+const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
+
 export default function HomeScreen() {
   const { uid, driver, loading, error } = useDriver();
   const [toggling, setToggling] = useState(false);
@@ -24,12 +30,23 @@ export default function HomeScreen() {
 
   const approved = driver?.approvalStatus === APPROVAL_STATUS.approved;
   const isAvailable = Boolean(driver?.isAvailable);
+  const receiving = isAvailable && approved;
 
   const {
     location,
     permissionDenied,
     error: locationError,
-  } = useDriverLocation({ uid, tracking: isAvailable && approved });
+  } = useDriverLocation({ uid, tracking: receiving });
+
+  const {
+    request,
+    secondsLeft,
+    processing,
+    notice,
+    error: requestsError,
+    accept,
+    reject,
+  } = useTripRequests({ driverId: uid, enabled: receiving });
 
   // Center the map the first time the driver's position is known
   useEffect(() => {
@@ -41,6 +58,17 @@ export default function HomeScreen() {
       );
     }
   }, [location]);
+
+  // When a new request arrives, fit the map to show driver, pickup and destination
+  useEffect(() => {
+    if (!request) return;
+    const points = [toLatLng(request.origin), toLatLng(request.destination)];
+    if (location) points.push(location);
+    mapRef.current?.fitToCoordinates(points, {
+      edgePadding: { top: 80, right: 60, bottom: 420, left: 60 },
+      animated: true,
+    });
+  }, [request?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Safety net: if the account stops being approved while available, go offline
   useEffect(() => {
@@ -97,6 +125,7 @@ export default function HomeScreen() {
   const firstName = driver.fullName.split(' ')[0];
   const visibleError =
     actionError ??
+    requestsError ??
     locationError ??
     (permissionDenied ? 'Sin permiso de ubicación: actívalo en Configuración para ponerte Disponible.' : null);
 
@@ -107,38 +136,69 @@ export default function HomeScreen() {
         style={StyleSheet.absoluteFill}
         initialRegion={LOCATION_CONFIG.defaultRegion}
         showsUserLocation={!permissionDenied}
-      />
-
-      <View style={styles.card}>
-        <Text style={styles.greeting}>Hola, {firstName}</Text>
-        <View style={[styles.badge, { backgroundColor: status.background }]}>
-          <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
-        </View>
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>{isAvailable ? 'Disponible' : 'No disponible'}</Text>
-          {toggling ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Switch
-              value={isAvailable}
-              onValueChange={handleToggle}
-              disabled={!approved}
-              trackColor={{ true: '#15803D' }}
+      >
+        {request && (
+          <>
+            <Marker
+              coordinate={toLatLng(request.origin)}
+              title="Recogida"
+              description={request.origin.address}
+              pinColor="green"
             />
-          )}
-        </View>
+            <Marker
+              coordinate={toLatLng(request.destination)}
+              title="Destino"
+              description={request.destination.address}
+              pinColor="red"
+            />
+            {request.routePath?.length > 1 && (
+              <Polyline coordinates={request.routePath} strokeWidth={4} strokeColor={colors.primary} />
+            )}
+          </>
+        )}
+      </MapView>
 
-        {!approved && (
-          <Text style={styles.note}>
-            Podrás ponerte Disponible cuando tu cuenta sea aprobada.
-          </Text>
-        )}
-        {isAvailable && approved && (
-          <Text style={styles.note}>Compartiendo tu ubicación en tiempo real.</Text>
-        )}
-        {visibleError && <Text style={styles.errorText}>{visibleError}</Text>}
-      </View>
+      {request ? (
+        <TripRequestCard
+          request={request}
+          secondsLeft={secondsLeft}
+          processing={processing}
+          onAccept={accept}
+          onReject={reject}
+        />
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.greeting}>Hola, {firstName}</Text>
+          <View style={[styles.badge, { backgroundColor: status.background }]}>
+            <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
+          </View>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>{isAvailable ? 'Disponible' : 'No disponible'}</Text>
+            {toggling ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Switch
+                value={isAvailable}
+                onValueChange={handleToggle}
+                disabled={!approved}
+                trackColor={{ true: '#15803D' }}
+              />
+            )}
+          </View>
+
+          {!approved && (
+            <Text style={styles.note}>Podrás ponerte Disponible cuando tu cuenta sea aprobada.</Text>
+          )}
+          {receiving && (
+            <Text style={styles.note}>Esperando solicitudes. Compartiendo tu ubicación.</Text>
+          )}
+          {notice && (
+            <Text style={[styles.notice, { color: NOTICE_COLORS[notice.type] }]}>{notice.text}</Text>
+          )}
+          {visibleError && <Text style={styles.errorText}>{visibleError}</Text>}
+        </View>
+      )}
     </View>
   );
 }
@@ -183,5 +243,6 @@ const styles = StyleSheet.create({
   },
   switchLabel: { fontSize: 17, fontWeight: '600', color: colors.text },
   note: { fontSize: 14, color: colors.muted, marginTop: 8 },
+  notice: { fontSize: 14, fontWeight: '600', marginTop: 8 },
   errorText: { fontSize: 14, color: colors.error, marginTop: 8, textAlign: 'center' },
 });

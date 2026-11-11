@@ -159,3 +159,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/App.js, mobile/src/config/location.js, mobile/src/utils/withTimeout.js, mobile/src/services/driverService.js, mobile/src/hooks/useDriverLocation.js, mobile/src/context/DriverContext.js, mobile/src/navigation/DriverDrawer.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/home/HomeScreen.js, mobile/src/screens/common/ComingSoonScreen.js — [f8312ef]
 - Verificación: En el iPhone: interruptor bloqueado en Pendiente, habilitado al aprobar desde la consola, ubicación escrita en Firestore al estar Disponible y detenida al apagarlo, apagado automático al revocar la aprobación, cierre de sesión que deja isAvailable en false y permiso de ubicación denegado sin cierre de la app.
 - Aprendizaje: Se entendió cómo limpiar una suscripción asíncrona (bandera cancelled), por qué limitar las escrituras a Firestore con useRef, y cómo un contexto evita suscripciones duplicadas al mismo documento.
+
+### Entrada #14
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el cálculo de tarifa y comisión, y un simulador de pasajero que cree solicitudes de viaje reales
+- Prompt: "Crear la función pura calculateFare con los valores de la guía en src/config/pricing.js (pesos enteros, redondeo a 100, comisión 20 %, propina completa al conductor) probada con el ejemplo de 8,5 km y 22 min, y un simulador de pasajero que cree viajes 'requested' en Firestore cerca del conductor, calculando ruta, distancia y duración una sola vez con un servicio gratuito."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se crearon config/pricing.js, calculateFare (pura, con pricing como parámetro) y utilidades geográficas con 10 pruebas. Se agregó routingService (OSRM para rutas y Nominatim para direcciones), tripService.createSimulatedTrip (documento trips con el modelo de la guía, commissionRate y routePath) y una pantalla de simulador en el menú lateral.
+- Qué se usó / modificó / descartó: Se descartó Google Distance Matrix/Directions porque están en estado Legacy y no se pueden habilitar en proyectos nuevos; se usó OSRM, que la guía acepta como alternativa.
+- Archivos y commit: mobile/src/config/pricing.js, mobile/src/config/trip.js, mobile/src/utils/calculateFare.js, mobile/src/utils/geo.js, mobile/src/utils/__tests__/calculateFare.test.js, mobile/src/utils/__tests__/geo.test.js, mobile/src/services/routingService.js, mobile/src/services/tripService.js, mobile/src/screens/simulator/PassengerSimulatorScreen.js, mobile/src/navigation/DriverDrawer.js — [a122e79]
+- Verificación: npm test con 45 pruebas en verde, incluido el ejemplo de la guía (Económico 19.200 / 3.840 / 15.360 y XL 26.900 / 5.380 / 21.520). En el iPhone se crearon solicitudes con tarjeta y efectivo que aparecieron en Firestore con todos los campos; en modo avión se mostró el mensaje de error sin cerrar la app.
+- Aprendizaje: Se entendió por qué el cálculo debe ser una sola función pura reutilizada, por qué manejar dinero en enteros, y por qué cada viaje guarda su commissionRate.
