@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #7
+// AI-assisted: see docs/AI_LOG.md #7, #12
 import {
   calculateAge,
   hasErrors,
@@ -22,8 +22,9 @@ const TODAY = new Date(2026, 10, 4); // 2026-11-04
 const CURRENT_YEAR = 2026;
 
 describe('Tab 1 - personal data', () => {
-  test('full name: accepts letters, accents and spaces', () => {
+  test('full name: accepts letters, accents, spaces and connectors', () => {
     expect(validateFullName('Santiago Cadavid Muñoz')).toBeNull();
+    expect(validateFullName('Ana de la Rosa')).toBeNull();
   });
   test('full name: rejects numbers and symbols', () => {
     expect(validateFullName('Santiago 2')).toBe('Solo se permiten letras y espacios.');
@@ -33,6 +34,11 @@ describe('Tab 1 - personal data', () => {
   });
   test('full name: rejects only spaces', () => {
     expect(validateFullName('   ')).toBe('Este campo es obligatorio.');
+  });
+  test('full name: requires first name and last name', () => {
+    const message = 'Escribe al menos un nombre y un apellido.';
+    expect(validateFullName('Santiago')).toBe(message);
+    expect(validateFullName('Juan C')).toBe(message);
   });
 
   test('document: accepts 6 and 10 digits', () => {
@@ -46,12 +52,18 @@ describe('Tab 1 - personal data', () => {
   test('document: rejects letters', () => {
     expect(validateDocumentId('12a456')).toBe('Solo se permiten números.');
   });
+  test('document: rejects a leading zero', () => {
+    expect(validateDocumentId('0123456')).toBe('No puede empezar por 0.');
+  });
 
-  test('phone: accepts exactly 10 digits', () => {
+  test('phone: accepts exactly 10 digits starting with 3', () => {
     expect(validatePhone('3001234567')).toBeNull();
   });
   test('phone: rejects 9 digits', () => {
     expect(validatePhone('300123456')).toBe('Debe tener exactamente 10 dígitos.');
+  });
+  test('phone: rejects numbers that do not start with 3', () => {
+    expect(validatePhone('6041234567')).toBe('El celular debe empezar por 3.');
   });
 
   test('age: birthday not reached this year subtracts one', () => {
@@ -66,6 +78,12 @@ describe('Tab 1 - personal data', () => {
   test('birth date: future and empty are invalid', () => {
     expect(validateBirthDate(new Date(2030, 0, 1), TODAY)).toBe('La fecha no puede ser futura.');
     expect(validateBirthDate(null, TODAY)).toBe('Selecciona tu fecha de nacimiento.');
+  });
+  test('birth date: 80 years is valid, 81 is not', () => {
+    expect(validateBirthDate(new Date(1946, 10, 4), TODAY)).toBeNull();
+    expect(validateBirthDate(new Date(1945, 10, 3), TODAY)).toBe(
+      'Revisa la fecha: la edad máxima es 80 años.',
+    );
   });
 
   test('email: accepts a valid email and rejects a missing domain', () => {
@@ -95,9 +113,10 @@ describe('Tab 2 - vehicle', () => {
     expect(validatePlate('AB1234')).toBe(message);
   });
 
-  test('year: accepts current year and rejects next year', () => {
+  test('year: accepts next year models and rejects two years ahead', () => {
     expect(validateYear('2026', CURRENT_YEAR)).toBeNull();
-    expect(validateYear('2027', CURRENT_YEAR)).toBe('No puede ser mayor a 2026.');
+    expect(validateYear('2027', CURRENT_YEAR)).toBeNull();
+    expect(validateYear('2028', CURRENT_YEAR)).toBe('No puede ser mayor a 2027.');
   });
   test('year: rejects non 4-digit values', () => {
     expect(validateYear('20a6', CURRENT_YEAR)).toBe('Debe tener 4 dígitos (ej. 2020).');
@@ -111,6 +130,13 @@ describe('Tab 2 - vehicle', () => {
     expect(validateCapacity('4', 'economy')).toBeNull();
     expect(validateCapacity('0', 'economy')).toBe('Debe ser al menos 1.');
     expect(validateCapacity('2.5', 'economy')).toBe('Solo se permiten números enteros.');
+  });
+  test('capacity: maximum per category', () => {
+    expect(validateCapacity('5', 'economy')).toBe(
+      'La categoría Económico permite máximo 4 pasajeros.',
+    );
+    expect(validateCapacity('8', 'xl')).toBeNull();
+    expect(validateCapacity('9', 'xl')).toBe('La categoría XL permite máximo 8 pasajeros.');
   });
 });
 

@@ -169,7 +169,7 @@ export default function VehicleScreen({ navigation }) {
           onChangeText={(text) => updateVehicleField('capacity', text)}
           onBlur={() => touchVehicleField('capacity')}
           error={errorFor('capacity')}
-          placeholder={vehicleData.category === 'xl' ? 'Mínimo 6 para XL' : 'Ej. 4'}
+          placeholder={vehicleData.category === 'xl' ? 'Entre 6 y 8 para XL' : 'Entre 1 y 4'}
           keyboardType="number-pad"
           maxLength={2}
         />

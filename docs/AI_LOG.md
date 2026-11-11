@@ -120,3 +120,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/utils/driverDocument.js, mobile/src/utils/__tests__/driverDocument.test.js, mobile/src/services/driverService.js, mobile/src/context/AuthContext.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/register/VehicleScreen.js — [a64f131]
 - Verificación: npm test con 30 pruebas en verde. En el iPhone se registró un conductor nuevo; el usuario apareció en Authentication y el documento drivers/{uid} en Firestore con approvalStatus pending y sin contraseña. Se probó correo ya registrado y modo avión con sus mensajes.
 - Aprendizaje: Quedó el registro guardado en la base de datos, que es el requisito central de la entrega. Se entendió por qué el perfil usa el mismo id que la cuenta, por qué hay que revertir la cuenta si falla el guardado, y cómo una bandera en el contexto controla cuándo cambia la navegación.
+
+### Entrada #11
+- Fecha: 2026-11-04
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Mostrar en Inicio el perfil del conductor y su estado de aprobación en tiempo real
+- Prompt: "Después del registro, mostrar en la pantalla de Inicio el nombre, el vehículo y el estado de aprobación del conductor leídos de Firestore en tiempo real con onSnapshot, mediante un hook personalizado con useEffect y función de limpieza, manejando carga, error y perfil inexistente."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregó subscribeToDriver (onSnapshot sobre drivers/{uid}) en driverService, el hook useDriverProfile que abre y cierra la suscripción, y una HomeScreen que muestra la insignia Pendiente o Aprobado, los datos del vehículo y estados de carga, error y sin perfil.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/services/driverService.js, mobile/src/hooks/useDriverProfile.js, mobile/src/screens/home/HomeScreen.js — [84f6972]
+- Verificación: Al cambiar approvalStatus a approved en la consola de Firebase, la insignia cambió sola en el iPhone sin recargar; se probó también la cuenta sin perfil y el cierre de sesión.
+- Aprendizaje: Quedó visible el resultado del registro y la simulación de aprobación que pide la guía. Se entendió la diferencia entre leer un documento una vez y suscribirse con onSnapshot, y por qué la función de limpieza del useEffect es obligatoria para cerrar la suscripción.
