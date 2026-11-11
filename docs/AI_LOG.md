@@ -172,3 +172,15 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/config/pricing.js, mobile/src/config/trip.js, mobile/src/utils/calculateFare.js, mobile/src/utils/geo.js, mobile/src/utils/__tests__/calculateFare.test.js, mobile/src/utils/__tests__/geo.test.js, mobile/src/services/routingService.js, mobile/src/services/tripService.js, mobile/src/screens/simulator/PassengerSimulatorScreen.js, mobile/src/navigation/DriverDrawer.js — [a122e79]
 - Verificación: npm test con 45 pruebas en verde, incluido el ejemplo de la guía (Económico 19.200 / 3.840 / 15.360 y XL 26.900 / 5.380 / 21.520). En el iPhone se crearon solicitudes con tarjeta y efectivo que aparecieron en Firestore con todos los campos; en modo avión se mostró el mensaje de error sin cerrar la app.
 - Aprendizaje: Se entendió por qué el cálculo debe ser una sola función pura reutilizada, por qué manejar dinero en enteros, y por qué cada viaje guarda su commissionRate.
+
+### Entrada #15
+- Fecha: 2026-11-10
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Recibir solicitudes de viaje en tiempo real con temporizador de 15 segundos y aceptar o rechazar
+- Prompt: "Crear el hook useTripRequests que escuche en tiempo real las solicitudes del conductor mientras está Disponible, mostrar en Inicio una tarjeta con origen, destino, distancia, duración, categoría, método de pago, tarifa y ganancia estimada, con un temporizador de 15 s que rechace automáticamente al llegar a cero, y manejadores de aceptar y rechazar con useCallback que impidan aceptar dos veces."
+- Resumen de la respuesta: Se agregaron a tripService la suscripción a solicitudes (onSnapshot con filtro por conductor y estado) y aceptar/rechazar con runTransaction. El hook useTripRequests maneja la suscripción, la cuenta regresiva desde createdAt con setInterval y su limpieza, el bloqueo de doble toque y la detección de cancelaciones. Se creó TripRequestCard y el mapa muestra la ruta con marcadores y Polyline.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/utils/format.js, mobile/src/utils/__tests__/format.test.js, mobile/src/services/tripService.js, mobile/src/hooks/useTripRequests.js, mobile/src/components/trip/TripRequestCard.js, mobile/src/screens/home/HomeScreen.js — [6e4f1d4]
+- Verificación: npm test con 46 pruebas en verde. En el iPhone se probaron la expiración a los 15 s (rejected/expired), el rechazo manual, la aceptación (accepted con acceptedAt), la cancelación desde la consola, el cambio a No disponible y el modo avión.
+- Aprendizaje: Se entendió por qué un temporizador y una suscripción deben cerrarse en la limpieza del useEffect, cómo una transacción evita condiciones de carrera al aceptar, y por qué medir el tiempo desde la creación del viaje y no desde que se muestra.

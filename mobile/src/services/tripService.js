@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #14, #15
+// AI-assisted: see docs/AI_LOG.md #14, #15, #16
 import {
   addDoc,
   collection,
@@ -16,7 +16,12 @@ import { calculateFare } from '../utils/calculateFare';
 import { offsetCoordinate, randomBetween } from '../utils/geo';
 import { withTimeout } from '../utils/withTimeout';
 import { PRICING } from '../config/pricing';
-import { SIMULATED_PASSENGERS, TRIP_CONFIG, TRIP_STATUS } from '../config/trip';
+import {
+  ACTIVE_TRIP_STATUSES,
+  SIMULATED_PASSENGERS,
+  TRIP_CONFIG,
+  TRIP_STATUS,
+} from '../config/trip';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,7 +29,15 @@ const randomItem = (items) => items[Math.floor(Math.random() * items.length)];
 
 const toPlace = ({ latitude, longitude }, address) => ({ lat: latitude, lng: longitude, address });
 
+const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
+
 const createdAtMs = (trip) => trip.createdAt?.toMillis?.() ?? 0;
+
+const withId = (snapshot) => ({
+  id: snapshot.id,
+  // "estimate" gives a usable timestamp while the server value is still pending
+  ...snapshot.data({ serverTimestamps: 'estimate' }),
+});
 
 // ---------- Simulated passenger ----------
 
@@ -125,10 +138,7 @@ export function subscribeToTripRequests(driverId, onData, onError) {
   return onSnapshot(
     requestsQuery,
     (snapshot) => {
-      const requests = snapshot.docs
-        // "estimate" gives a usable createdAt while the server timestamp is still pending
-        .map((item) => ({ id: item.id, ...item.data({ serverTimestamps: 'estimate' }) }))
-        .sort((a, b) => createdAtMs(a) - createdAtMs(b));
+      const requests = snapshot.docs.map(withId).sort((a, b) => createdAtMs(a) - createdAtMs(b));
       onData(requests);
     },
     onError,
@@ -167,6 +177,95 @@ export async function rejectTrip(tripId, reason) {
   });
 }
 
+// ---------- Active trip ----------
+
+// Real-time listener of the driver's current trip (accepted ... completed). Null when none.
+export function subscribeToActiveTrip(driverId, onData, onError) {
+  const activeQuery = query(
+    collection(db, 'trips'),
+    where('driverId', '==', driverId),
+    where('status', 'in', ACTIVE_TRIP_STATUSES),
+  );
+  return onSnapshot(
+    activeQuery,
+    (snapshot) => {
+      const trips = snapshot.docs.map(withId).sort((a, b) => createdAtMs(b) - createdAtMs(a));
+      onData(trips[0] ?? null);
+    },
+    onError,
+  );
+}
+
+// Changes a trip only if its current status is one of "allowedFrom".
+// Protects against double taps and against changes made meanwhile (e.g. passenger cancelled).
+async function transitionTrip(tripId, allowedFrom, changes) {
+  const tripRef = doc(db, 'trips', tripId);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(tripRef);
+    if (!snapshot.exists()) throw new Error('trip-not-found');
+    if (!allowedFrom.includes(snapshot.data().status)) throw new Error('trip-invalid-state');
+    transaction.update(tripRef, changes);
+  });
+}
+
+// accepted -> driver_arriving. The route to the pickup is calculated once, when accepting.
+// Returns false if the route could not be calculated (the trip still moves on).
+export async function startPickup(trip, driverLocation) {
+  let pickupRoute = null;
+  if (driverLocation) {
+    try {
+      pickupRoute = await getRoute(driverLocation, toLatLng(trip.origin));
+    } catch (routeError) {
+      pickupRoute = null;
+    }
+  }
+  await transitionTrip(trip.id, [TRIP_STATUS.accepted], {
+    status: TRIP_STATUS.driverArriving,
+    pickupRoute,
+    driverArrivingAt: serverTimestamp(),
+  });
+  return Boolean(pickupRoute);
+}
+
+// driver_arriving -> in_progress ("Pasajero a bordo")
+export function startTrip(tripId) {
+  return transitionTrip(tripId, [TRIP_STATUS.driverArriving], {
+    status: TRIP_STATUS.inProgress,
+    startedAt: serverTimestamp(),
+  });
+}
+
+// in_progress -> completed. Final fare with the SAME function used for the estimate,
+// and with the commission rate saved in the trip (never the current one)
+export function finishTrip(trip) {
+  const result = calculateFare(
+    {
+      distanceKm: trip.distanceKm,
+      durationMin: trip.durationMin,
+      category: trip.category,
+      tip: trip.tip ?? 0,
+    },
+    { ...PRICING, commissionRate: trip.commissionRate },
+  );
+  return transitionTrip(trip.id, [TRIP_STATUS.inProgress], {
+    status: TRIP_STATUS.completed,
+    fare: result.fare,
+    commission: result.commission,
+    tip: result.tip,
+    driverEarnings: result.driverEarnings,
+    completedAt: serverTimestamp(),
+  });
+}
+
+// The guide: a trip can be cancelled by either party before "in_progress"
+export function cancelTripByDriver(tripId) {
+  return transitionTrip(tripId, [TRIP_STATUS.accepted, TRIP_STATUS.driverArriving], {
+    status: TRIP_STATUS.cancelled,
+    cancelledBy: 'driver',
+    cancelledAt: serverTimestamp(),
+  });
+}
+
 export function getTripErrorMessage(error) {
   switch (error?.message) {
     case 'trip-not-available':
@@ -174,6 +273,8 @@ export function getTripErrorMessage(error) {
       return 'La solicitud ya no está disponible (fue aceptada, rechazada o cancelada).';
     case 'trip-not-yours':
       return 'Esta solicitud no está asignada a ti.';
+    case 'trip-invalid-state':
+      return 'El viaje cambió de estado mientras tanto. La pantalla ya muestra el estado actual.';
     case 'timeout':
       return 'El servidor no respondió. Revisa tu conexión e inténtalo de nuevo.';
     default:

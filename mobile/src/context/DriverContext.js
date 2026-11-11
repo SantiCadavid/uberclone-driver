@@ -1,17 +1,22 @@
-// AI-assisted: see docs/AI_LOG.md #13
+// AI-assisted: see docs/AI_LOG.md #13, #16
 import { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useDriverProfile } from '../hooks/useDriverProfile';
+import { useActiveTrip } from '../hooks/useActiveTrip';
 
 const DriverContext = createContext(null);
 
-// One Firestore subscription to the driver's profile, shared by every screen
+// Driver session + active trip, shared by every screen with one subscription each
 export function DriverProvider({ children }) {
   const { user } = useAuth();
   const uid = user?.uid ?? null;
   const { driver, loading, error } = useDriverProfile(uid);
+  const { activeTrip, error: activeTripError } = useActiveTrip(uid);
 
-  const value = useMemo(() => ({ uid, driver, loading, error }), [uid, driver, loading, error]);
+  const value = useMemo(
+    () => ({ uid, driver, loading, error, activeTrip, activeTripError }),
+    [uid, driver, loading, error, activeTrip, activeTripError],
+  );
 
   return <DriverContext.Provider value={value}>{children}</DriverContext.Provider>;
 }
