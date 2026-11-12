@@ -184,3 +184,16 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/utils/format.js, mobile/src/utils/__tests__/format.test.js, mobile/src/services/tripService.js, mobile/src/hooks/useTripRequests.js, mobile/src/components/trip/TripRequestCard.js, mobile/src/screens/home/HomeScreen.js — [6e4f1d4]
 - Verificación: npm test con 46 pruebas en verde. En el iPhone se probaron la expiración a los 15 s (rejected/expired), el rechazo manual, la aceptación (accepted con acceptedAt), la cancelación desde la consola, el cambio a No disponible y el modo avión.
 - Aprendizaje: Se entendió por qué un temporizador y una suscripción deben cerrarse en la limpieza del useEffect, cómo una transacción evita condiciones de carrera al aceptar, y por qué medir el tiempo desde la creación del viaje y no desde que se muestra.
+
+### Entrada #16
+- Fecha: 2026-11-11
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el viaje en curso: ruta a la recogida, pasajero a bordo, ruta al destino y finalización con tarifa final
+- Prompt: "Al aceptar una solicitud, mostrar la pantalla del viaje en curso en el Stack con la ruta hacia el punto de recogida (driver_arriving); al tocar Pasajero a bordo cambiar la ruta hacia el destino (in_progress); al finalizar calcular tarifa, comisión y ganancia con la misma calculateFare y el commissionRate del viaje (completed); permitir cancelar antes de in_progress y retomar el viaje si la app se cierra."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregó el viaje activo al DriverContext mediante useActiveTrip (onSnapshot sobre los estados activos); transiciones de estado con transacción (startPickup, startTrip, finishTrip, cancelTripByDriver); ActiveTripScreen con mapa, marcadores, Polyline por etapa y resumen; y un RootNavigator que muestra la pantalla del viaje mientras exista un viaje activo.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/config/trip.js, mobile/src/services/tripService.js, mobile/src/hooks/useActiveTrip.js, mobile/src/context/DriverContext.js, mobile/src/screens/trip/ActiveTripScreen.js, mobile/src/navigation/RootNavigator.js — [05eefc1]
+- Verificación: En el iPhone se completó un viaje (driver_arriving → in_progress → completed) con fare igual a estimatedFare y comisión del 20 %; se retomó el viaje al reabrir la app; se probó la cancelación por el conductor y desde la consola, y el modo avión.
+- Aprendizaje: Se entendió cómo una máquina de estados guardada en la base de datos controla la navegación, por qué cada transición se valida con una transacción, y por qué la tarifa final reutiliza la misma función pura que la estimación.
