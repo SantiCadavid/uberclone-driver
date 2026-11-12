@@ -197,3 +197,25 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/config/trip.js, mobile/src/services/tripService.js, mobile/src/hooks/useActiveTrip.js, mobile/src/context/DriverContext.js, mobile/src/screens/trip/ActiveTripScreen.js, mobile/src/navigation/RootNavigator.js — [05eefc1]
 - Verificación: En el iPhone se completó un viaje (driver_arriving → in_progress → completed) con fare igual a estimatedFare y comisión del 20 %; se retomó el viaje al reabrir la app; se probó la cancelación por el conductor y desde la consola, y el modo avión.
 - Aprendizaje: Se entendió cómo una máquina de estados guardada en la base de datos controla la navegación, por qué cada transición se valida con una transacción, y por qué la tarifa final reutiliza la misma función pura que la estimación.
+
+### Entrada #17
+- Fecha: 2026-11-11
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el backend de pagos con Mercado Pago Checkout Pro (paso 17A): crear la preferencia de pago de un viaje, recibir la notificación de la pasarela y actualizar el viaje y el saldo del conductor de forma segura.
+- Prompt: "Implementar un backend Node.js/Express (ESM) que use el SDK v2 de Mercado Pago (API de Preferences) con credenciales de prueba guardadas solo en backend/.env. Endpoints: GET /health; POST /payments/preference (protegido con el ID token de Firebase) que cree la preferencia tomando el monto desde Firestore y no desde la app; POST /payments/webhook que reciba la notificación de la pasarela; POST /payments/verify para consultar el pago manualmente; GET /payments/return como URL de retorno. Al aprobarse el pago, actualizar el viaje (paymentStatus, paymentId, paidAt, status: paid) y sumar driverEarnings al balance del conductor de forma idempotente. Exponer el backend con ngrok usando un dominio estático y agregar scripts de prueba por consola."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó el backend en backend/ con Express, firebase-admin y el SDK de Mercado Pago. La preferencia se crea con el monto leído del viaje en Firestore, el webhook y el endpoint de verificación consultan el pago real en Mercado Pago y aplican el resultado con una transacción idempotente. Se agregaron los scripts pay:preference y pay:verify para probar sin la app.
+- Qué se usó / modificó / descartó:
+  - Usado: estructura por módulos (config, firebaseAdmin, errors, auth, mercadoPago, payments, server), verificación del ID token con requireAuth, applyPaymentResult idempotente y ngrok con dominio estático.
+  - Modificado: se dejó mobile/.env solo con las 6 variables EXPO_PUBLIC_FIREBASE_*, porque inicialmente quedaron variables del backend allí. Se agregó el encabezado ngrok-skip-browser-warning por la página de aviso de ngrok gratuito.
+  - Descartado: Firebase Cloud Functions (exigen plan Blaze) y confiar en el monto enviado por la app (riesgo de manipulación). Queda como mejora futura migrar de la API de Preferences a la API Orders, porque Mercado Pago avisa que Preferences será descontinuada.
+- Archivos y commit: backend/package.json, backend/.env.example, backend/src/config.js, backend/src/firebaseAdmin.js, backend/src/errors.js, backend/src/auth.js, backend/src/mercadoPago.js, backend/src/payments.js, backend/src/server.js, backend/scripts/testPreference.js, backend/scripts/testVerify.js, .gitignore — [751ff5c]
+- Verificación:
+  - /health respondió {"status":"ok"} por la URL pública de ngrok.
+  - Con npm run pay:preference se generó el link de pago, y se pagó en incógnito con la cuenta "Comprador - UberClone" y la tarjeta de prueba con titular APRO: pago aprobado.
+  - El webhook llegó (visible en http://127.0.0.1:4040), el viaje quedó en status paid con paymentId y paidAt, y el balance del conductor quedó en 13040.
+  - Ejecutar pay:verify de nuevo no volvió a sumar el saldo, lo que comprueba la idempotencia.
+  - Error resuelto: "Una de las partes es de prueba" aparecía al pagar sin sesión o con la cuenta real. Se resolvió iniciando sesión primero con el comprador de prueba.
+  - Se confirmó con git status que backend/.env y serviceAccountKey.json no entran al commit.
+- Aprendizaje: Entendí por qué la llave secreta y el cálculo del monto deben vivir en el backend: la app no es un entorno confiable. También entendí que un webhook puede llegar varias veces, así que la actualización del pago debe ser idempotente para no duplicar el saldo. Haría distinto: usar desde el inicio la API Orders y no mostrar el Access Token en capturas (queda pendiente renovar las credenciales de prueba).

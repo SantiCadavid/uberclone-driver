@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #5
+// AI-assisted: see docs/AI_LOG.md #5, #18
 // Explicit colors so text stays readable even when the phone uses dark mode
 export const colors = {
   background: '#FFFFFF',
@@ -8,4 +8,6 @@ export const colors = {
   primaryText: '#FFFFFF',
   error: '#DC2626',
   border: '#D1D5DB',
+  success: '#15803D',
+  warning: '#B45309',
 };

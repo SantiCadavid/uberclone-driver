@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #14, #15, #16
+// AI-assisted: see docs/AI_LOG.md #14, #15, #16, #18
 import {
   addDoc,
   collection,
@@ -280,4 +280,16 @@ export function getTripErrorMessage(error) {
     default:
       return 'No se pudo procesar la solicitud. Inténtalo de nuevo.';
   }
+}
+
+// ---------- Trip summary ----------
+
+// AI-assisted: see docs/AI_LOG.md #18
+// Real-time listener of one trip by id (final summary after payment). Null if it does not exist.
+export function subscribeToTrip(tripId, onData, onError) {
+  return onSnapshot(
+    doc(db, 'trips', tripId),
+    (snapshot) => onData(snapshot.exists() ? withId(snapshot) : null),
+    onError,
+  );
 }
