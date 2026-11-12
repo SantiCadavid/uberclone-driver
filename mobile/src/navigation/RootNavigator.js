@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #5, #6, #10, #13, #16
+// AI-assisted: see docs/AI_LOG.md #5, #6, #10, #13, #16, #18
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { user, initializing, registrationInProgress } = useAuth();
-  const { activeTrip } = useDriver();
+  const { activeTrip, summaryTripId } = useDriver();
 
   // While Firebase checks for a saved session, show a loader instead of flashing the Login
   if (initializing) {
@@ -26,12 +26,14 @@ export default function RootNavigator() {
 
   // During registration the account exists before its profile is saved; stay on Register
   const showDriverApp = user && !registrationInProgress;
+  // The trip screen stays open until the trip is cancelled or the driver closes the paid summary
+  const showTripScreen = Boolean(activeTrip || summaryTripId);
 
   return (
     <Stack.Navigator>
       {showDriverApp ? (
-        activeTrip ? (
-          // Stack for the trip flow: the driver stays here until the trip is paid or cancelled
+        showTripScreen ? (
+          // Stack for the trip flow (the title changes per stage inside the screen)
           <Stack.Screen
             name="ActiveTrip"
             component={ActiveTripScreen}

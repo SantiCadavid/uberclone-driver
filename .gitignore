@@ -1,4 +1,4 @@
-# AI-assisted: see docs/AI_LOG.md #2
+# AI-assisted: see docs/AI_LOG.md #2, #17
 
 # Dependencies
 node_modules/
@@ -7,6 +7,10 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Firebase service account (full admin access to the database) - NEVER commit
+backend/serviceAccountKey.json
+*serviceAccount*.json
 
 # Expo
 .expo/

@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #13, #14
+// AI-assisted: see docs/AI_LOG.md #13, #14, #19
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
@@ -10,19 +10,15 @@ import { useDriver } from '../context/DriverContext';
 import { logout } from '../services/authService';
 import { setDriverAvailability } from '../services/driverService';
 import HomeScreen from '../screens/home/HomeScreen';
+import HistoryScreen from '../screens/history/HistoryScreen';
+import EarningsScreen from '../screens/earnings/EarningsScreen';
 import PassengerSimulatorScreen from '../screens/simulator/PassengerSimulatorScreen';
 import ComingSoonScreen from '../screens/common/ComingSoonScreen';
 import { colors } from '../theme/colors';
 
 const Drawer = createDrawerNavigator();
 
-// TEMPORARY screens, replaced in the next steps
-function HistoryScreen() {
-  return <ComingSoonScreen title="Historial de carreras" />;
-}
-function EarningsScreen() {
-  return <ComingSoonScreen title="Ganancias" />;
-}
+// TEMPORARY screen, replaced in step 19
 function ProfileScreen() {
   return <ComingSoonScreen title="Perfil y configuración" />;
 }

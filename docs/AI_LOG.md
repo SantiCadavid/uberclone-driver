@@ -184,3 +184,54 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/utils/format.js, mobile/src/utils/__tests__/format.test.js, mobile/src/services/tripService.js, mobile/src/hooks/useTripRequests.js, mobile/src/components/trip/TripRequestCard.js, mobile/src/screens/home/HomeScreen.js — [6e4f1d4]
 - Verificación: npm test con 46 pruebas en verde. En el iPhone se probaron la expiración a los 15 s (rejected/expired), el rechazo manual, la aceptación (accepted con acceptedAt), la cancelación desde la consola, el cambio a No disponible y el modo avión.
 - Aprendizaje: Se entendió por qué un temporizador y una suscripción deben cerrarse en la limpieza del useEffect, cómo una transacción evita condiciones de carrera al aceptar, y por qué medir el tiempo desde la creación del viaje y no desde que se muestra.
+
+### Entrada #16
+- Fecha: 2026-11-11
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el viaje en curso: ruta a la recogida, pasajero a bordo, ruta al destino y finalización con tarifa final
+- Prompt: "Al aceptar una solicitud, mostrar la pantalla del viaje en curso en el Stack con la ruta hacia el punto de recogida (driver_arriving); al tocar Pasajero a bordo cambiar la ruta hacia el destino (in_progress); al finalizar calcular tarifa, comisión y ganancia con la misma calculateFare y el commissionRate del viaje (completed); permitir cancelar antes de in_progress y retomar el viaje si la app se cierra."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se agregó el viaje activo al DriverContext mediante useActiveTrip (onSnapshot sobre los estados activos); transiciones de estado con transacción (startPickup, startTrip, finishTrip, cancelTripByDriver); ActiveTripScreen con mapa, marcadores, Polyline por etapa y resumen; y un RootNavigator que muestra la pantalla del viaje mientras exista un viaje activo.
+- Qué se usó / modificó / descartó: [COMPLETAR si cambiaste algo]
+- Archivos y commit: mobile/src/config/trip.js, mobile/src/services/tripService.js, mobile/src/hooks/useActiveTrip.js, mobile/src/context/DriverContext.js, mobile/src/screens/trip/ActiveTripScreen.js, mobile/src/navigation/RootNavigator.js — [05eefc1]
+- Verificación: En el iPhone se completó un viaje (driver_arriving → in_progress → completed) con fare igual a estimatedFare y comisión del 20 %; se retomó el viaje al reabrir la app; se probó la cancelación por el conductor y desde la consola, y el modo avión.
+- Aprendizaje: Se entendió cómo una máquina de estados guardada en la base de datos controla la navegación, por qué cada transición se valida con una transacción, y por qué la tarifa final reutiliza la misma función pura que la estimación.
+
+### Entrada #17
+- Fecha: 2026-11-11
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el backend de pagos con Mercado Pago Checkout Pro (paso 17A): crear la preferencia de pago de un viaje, recibir la notificación de la pasarela y actualizar el viaje y el saldo del conductor de forma segura.
+- Prompt: "Implementar un backend Node.js/Express (ESM) que use el SDK v2 de Mercado Pago (API de Preferences) con credenciales de prueba guardadas solo en backend/.env. Endpoints: GET /health; POST /payments/preference (protegido con el ID token de Firebase) que cree la preferencia tomando el monto desde Firestore y no desde la app; POST /payments/webhook que reciba la notificación de la pasarela; POST /payments/verify para consultar el pago manualmente; GET /payments/return como URL de retorno. Al aprobarse el pago, actualizar el viaje (paymentStatus, paymentId, paidAt, status: paid) y sumar driverEarnings al balance del conductor de forma idempotente. Exponer el backend con ngrok usando un dominio estático y agregar scripts de prueba por consola."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó el backend en backend/ con Express, firebase-admin y el SDK de Mercado Pago. La preferencia se crea con el monto leído del viaje en Firestore, el webhook y el endpoint de verificación consultan el pago real en Mercado Pago y aplican el resultado con una transacción idempotente. Se agregaron los scripts pay:preference y pay:verify para probar sin la app.
+- Qué se usó / modificó / descartó:
+  - Usado: estructura por módulos (config, firebaseAdmin, errors, auth, mercadoPago, payments, server), verificación del ID token con requireAuth, applyPaymentResult idempotente y ngrok con dominio estático.
+  - Modificado: se dejó mobile/.env solo con las 6 variables EXPO_PUBLIC_FIREBASE_*, porque inicialmente quedaron variables del backend allí. Se agregó el encabezado ngrok-skip-browser-warning por la página de aviso de ngrok gratuito.
+  - Descartado: Firebase Cloud Functions (exigen plan Blaze) y confiar en el monto enviado por la app (riesgo de manipulación). Queda como mejora futura migrar de la API de Preferences a la API Orders, porque Mercado Pago avisa que Preferences será descontinuada.
+- Archivos y commit: backend/package.json, backend/.env.example, backend/src/config.js, backend/src/firebaseAdmin.js, backend/src/errors.js, backend/src/auth.js, backend/src/mercadoPago.js, backend/src/payments.js, backend/src/server.js, backend/scripts/testPreference.js, backend/scripts/testVerify.js, .gitignore — [751ff5c]
+- Verificación:
+  - /health respondió {"status":"ok"} por la URL pública de ngrok.
+  - Con npm run pay:preference se generó el link de pago, y se pagó en incógnito con la cuenta "Comprador - UberClone" y la tarjeta de prueba con titular APRO: pago aprobado.
+  - El webhook llegó (visible en http://127.0.0.1:4040), el viaje quedó en status paid con paymentId y paidAt, y el balance del conductor quedó en 13040.
+  - Ejecutar pay:verify de nuevo no volvió a sumar el saldo, lo que comprueba la idempotencia.
+  - Error resuelto: "Una de las partes es de prueba" aparecía al pagar sin sesión o con la cuenta real. Se resolvió iniciando sesión primero con el comprador de prueba.
+  - Se confirmó con git status que backend/.env y serviceAccountKey.json no entran al commit.
+- Aprendizaje: Entendí por qué la llave secreta y el cálculo del monto deben vivir en el backend: la app no es un entorno confiable. También entendí que un webhook puede llegar varias veces, así que la actualización del pago debe ser idempotente para no duplicar el saldo. Haría distinto: usar desde el inicio la API Orders y no mostrar el Access Token en capturas (queda pendiente renovar las credenciales de prueba).
+
+### Entrada #18
+- Fecha: 2026-11-11
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Implementar el cobro del viaje en la app del conductor (paso 17B): checkout de Mercado Pago, verificación del pago, cobro en efectivo con descuento de comisión del saldo y resumen final del viaje pagado.
+- Prompt: "Con el backend de pagos ya funcionando, implementar en la app Expo el cobro del viaje: un servicio que llame POST /payments/preference y /payments/verify con el ID token de Firebase y timeout; abrir el checkout de Mercado Pago con expo-web-browser y verificar el pago al cerrar el navegador; registrar el pago en efectivo con una transacción de Firestore que pase el viaje a paid con paymentStatus cash y descuente la comisión del balance del conductor (puede quedar negativo); mostrar el estado Aprobado/Pendiente/Rechazado/Efectivo con funciones puras probadas en Jest; y resolver que, al pasar a paid, la app muestre el resumen final en lugar de saltar a Inicio (opción A: estado local en DriverContext)."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se crearon paymentService (backend y efectivo), los hooks useTripPayment y useTripSummary, y las funciones puras de estado del pago con 12 pruebas. ActiveTripScreen muestra el cobro en la etapa completed y el resumen en paid. useActiveTrip detecta el paso completed → paid para mantener el resumen hasta que el conductor toca Continuar.
+- Qué se usó / modificó / descartó:
+  - Usado: expo-web-browser (la promesa se resuelve al cerrar el navegador y permite verificar el pago automáticamente), AbortController para el timeout de fetch y una transacción para el efectivo validada con la misma regla de los botones.
+  - Modificado: paymentStatus.js pasó de textos fijos a TRIP_STATUS y PAYMENT_METHODS; colors.js incorpora success y warning; si se cobra en efectivo tras un rechazo, el viaje guarda paymentMethod cash y paymentMethodChangedFrom.
+  - Descartado: Linking.openURL (no avisa cuando el usuario vuelve), un campo driverAcknowledgedAt en Firestore (relee todo el historial pagado) y una pantalla TripSummary separada (frágil al cambiar de navegador).
+- Archivos y commit: mobile/src/config/payment.js, mobile/src/utils/paymentStatus.js, mobile/src/utils/__tests__/paymentStatus.test.js, mobile/src/services/paymentService.js, mobile/src/services/tripService.js, mobile/src/hooks/useTripPayment.js, mobile/src/hooks/useTripSummary.js, mobile/src/hooks/useActiveTrip.js, mobile/src/context/DriverContext.js, mobile/src/navigation/RootNavigator.js, mobile/src/screens/trip/ActiveTripScreen.js, mobile/src/theme/colors.js, mobile/.env.example, mobile/package.json — [e43bab0]
+- Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 6 suites y 58 pruebas en verde; efectivo con saldo descontado y prueba con saldo negativo; tarjeta APRO aprobada con resumen; OTHE rechazado con opción de reintentar o efectivo; CONT pendiente con Verificar pago; ngrok apagado y modo avión con mensajes claros sin cierre de la app.
+- Aprendizaje: Entendí que el estado del pago tiene una sola fuente de verdad (Firestore) y que la app solo pide acciones: no decide si un pago se aprobó. También entendí que una misma regla de negocio (cuándo se permite el efectivo) debe vivir en una función pura, reutilizada por la interfaz y por la transacción, para que no se contradigan. Haría distinto: mover el cobro en efectivo al backend para que el cliente no pueda modificar el saldo; queda para las reglas de seguridad del paso 22.
