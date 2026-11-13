@@ -411,3 +411,43 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/components/common/Skeleton.js, mobile/src/components/common/EmptyState.js, mobile/src/i18n/es.design.js, mobile/src/i18n/en.design.js, mobile/src/i18n/index.js, mobile/src/components/form/DateField.js, mobile/src/components/trip/TripHistoryItem.js, mobile/src/components/trip/TripDetailModal.js, mobile/src/screens/history/HistoryScreen.js, mobile/src/screens/earnings/EarningsScreen.js, mobile/src/screens/profile/ProfileScreen.js, mobile/src/navigation/DriverDrawer.js — [e575dca]
 - Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 17 suites y 135 pruebas; esqueletos en historial y ganancias; vacíos con botón a Inicio; menú con foto y Barlow; perfil rediseñado; selectores de fecha funcionando y sin el aviso de onChange; confirmado que el código propio no importa Reanimated.
 - Aprendizaje: Entendí que los estados de carga y vacío también son diseño: deben anticipar el contenido y decir qué hacer. También entendí la importancia de verificar la API de una librería en el paquete real antes de migrar, y de distinguir los avisos propios de los de dependencias. Haría distinto: diseñar los estados vacíos y de carga al mismo tiempo que cada pantalla.
+
+### Entrada #30
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Ejecutar las pruebas de robustez del cierre (paso 23A) desde el punto de vista de la docente y documentar sus resultados.
+- Prompt: "Preparar una tabla de pruebas para intentar romper la app: formularios vacíos e inválidos, sin internet, backend caído, permisos denegados, temporizador en cero, aceptar dos veces, solicitud cancelada, pagos aprobado, pendiente y rechazado, saldo negativo, efectivo dos veces, cuenta pendiente y cierre de la app durante el cobro; además pruebas temporales de cambio de comisión, paginación y eliminación de la limpieza de un useEffect, con la forma segura de deshacerlas. Listar lo que no se evita sino que se explica."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se entregó una tabla de 21 pruebas con su resultado esperado, las instrucciones para deshacer las pruebas temporales con git restore y la lista de limitaciones que se explican en la sustentación. Se agregó un registro en modo desarrollo para diagnosticar respuestas del backend que no son JSON.
+- Qué se usó / modificó / descartó:
+  - Usado: modo avión, backend apagado, permisos del sistema, consola de Firestore para simular la cancelación de una solicitud y el saldo en cero, tarjetas de prueba APRO, CONT y OTHE, git restore para deshacer las pruebas temporales.
+  - Modificado: paymentService registra en desarrollo la ruta y el código HTTP cuando el backend responde sin JSON. [COMPLETAR con la causa encontrada del fallo intermitente de "Cobrar con Mercado Pago"]
+  - Descartado: guardar capturas en el repositorio (las evidencias quedan en esta tabla y en el video final) y las pruebas de notificaciones push (FCM no funciona en Expo Go para iPhone; se explica en la sustentación).
+- Archivos y commit: docs/AI_LOG.md, mobile/src/services/paymentService.js — [HASH]
+- Verificación:
+  | # | Prueba | Resultado |
+  |---|---|---|
+  | 1 | Formulario vacío | ✓ |
+  | 2 | Formato inválido | ✓ |
+  | 3 | Sin internet en el Login | ✓ |
+  | 4 | Sin internet en el viaje | ✓ |
+  | 5 | Backend caído | ✓ |
+  | 6 | Permiso de ubicación denegado | ✓ |
+  | 7 | Permiso de cámara denegado | ✓ |
+  | 8 | Notificaciones push | N/A (se explica) |
+  | 9 | Temporizador en cero | ✓ |
+  | 10 | Aceptar dos veces | ✓ |
+  | 11 | Solicitud cancelada por el pasajero | ✓ |
+  | 12 | Pago aprobado (APRO) | ✓ |
+  | 13 | Pago pendiente (CONT) | ✓ |
+  | 14 | Pago rechazado (OTHE) | ✓ |
+  | 15 | Saldo negativo | ✓ |
+  | 16 | Efectivo dos veces (idempotente) | ✓ |
+  | 17 | Cuenta pendiente intenta Disponible | ✓ |
+  | 18 | Cerrar la app durante el cobro | ✓ |
+  | 19 | Comisión al 25 %: el historial conserva el 20 % | ✓ |
+  | 20 | Paginación con pageSize 2 | ✓ |
+  | 21 | Sin limpieza en useDriverLocation: el GPS sigue escribiendo; restaurado con git restore | ✓ |
+  Hallazgo: "Cobrar con Mercado Pago" mostró de forma intermitente "El servidor de pagos no está disponible" aunque el backend funcionaba en las demás pruebas; la app respondió con un mensaje claro y sin cerrarse. [COMPLETAR con el diagnóstico]
+- Aprendizaje: Entendí que probar como alguien que intenta romper la app revela comportamientos que las pruebas normales no muestran, que un fallo intermitente se diagnostica con datos (registros e inspector de red) y no adivinando, y que la prueba de quitar la limpieza de un useEffect hace visible por qué existe. Haría distinto: ejecutar estas pruebas al cerrar cada módulo y no solo al final.
