@@ -1,11 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #11, #13, #15, #21, #23
+// AI-assisted: see docs/AI_LOG.md #11, #13, #15, #21, #23, #28
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useDriver } from '../../context/DriverContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useTripRequests } from '../../hooks/useTripRequests';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { setDriverAvailability } from '../../services/driverService';
 import { loadLastAvailability, saveLastAvailability } from '../../services/preferencesService';
 import TripRequestCard from '../../components/trip/TripRequestCard';
@@ -13,10 +14,12 @@ import { APPROVAL_STATUS } from '../../utils/driverDocument';
 import { withTimeout } from '../../utils/withTimeout';
 import { LOCATION_CONFIG } from '../../config/location';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 const STATUS_DISPLAY = {
-  [APPROVAL_STATUS.pending]: { labelKey: 'home.status.pending', color: colors.warning, background: '#FEF3C7' },
-  [APPROVAL_STATUS.approved]: { labelKey: 'home.status.approved', color: colors.success, background: '#DCFCE7' },
+  [APPROVAL_STATUS.pending]: { labelKey: 'home.status.pending', color: colors.warning, background: '#FBF0D0' },
+  [APPROVAL_STATUS.approved]: { labelKey: 'home.status.approved', color: colors.success, background: '#E2F2EA' },
 };
 
 const NOTICE_COLORS = { ok: colors.success, info: colors.muted, error: colors.error };
@@ -26,6 +29,7 @@ const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
 export default function HomeScreen() {
   const { uid, driver, loading, error } = useDriver();
   const { t } = useLanguage();
+  const reduceMotion = useReducedMotion();
   const [toggling, setToggling] = useState(false);
   const [actionErrorKey, setActionErrorKey] = useState(null);
   const [lastAvailable, setLastAvailable] = useState(false);
@@ -35,6 +39,7 @@ export default function HomeScreen() {
   const approved = driver?.approvalStatus === APPROVAL_STATUS.approved;
   const isAvailable = Boolean(driver?.isAvailable);
   const receiving = isAvailable && approved;
+  const availableAnim = useRef(new Animated.Value(isAvailable ? 1 : 0)).current;
 
   const {
     location,
@@ -64,6 +69,24 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // The yellow "Available" stripe answers the driver's action with a short transition
+  useEffect(() => {
+    const toValue = isAvailable ? 1 : 0;
+    if (reduceMotion) {
+      availableAnim.setValue(toValue);
+      return undefined;
+    }
+    const animation = Animated.timing(availableAnim, {
+      toValue,
+      duration: 260,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    });
+    animation.start();
+    // Cleanup: stop the transition if the state changes again before it ends
+    return () => animation.stop();
+  }, [isAvailable, reduceMotion]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Center the map the first time the driver's position is known
   useEffect(() => {
     if (location && !centeredRef.current) {
@@ -81,7 +104,7 @@ export default function HomeScreen() {
     const points = [toLatLng(request.origin), toLatLng(request.destination)];
     if (location) points.push(location);
     mapRef.current?.fitToCoordinates(points, {
-      edgePadding: { top: 80, right: 60, bottom: 420, left: 60 },
+      edgePadding: { top: 80, right: 60, bottom: 440, left: 60 },
       animated: true,
     });
   }, [request?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -176,7 +199,7 @@ export default function HomeScreen() {
               pinColor="red"
             />
             {request.routePath?.length > 1 && (
-              <Polyline coordinates={request.routePath} strokeWidth={4} strokeColor={colors.primary} />
+              <Polyline coordinates={request.routePath} strokeWidth={5} strokeColor={colors.primary} />
             )}
           </>
         )}
@@ -192,6 +215,11 @@ export default function HomeScreen() {
         />
       ) : (
         <View style={styles.card}>
+          {/* The memorable element: the road-sign stripe appears while the driver is Available */}
+          <Animated.View
+            style={[styles.stripe, { opacity: availableAnim, transform: [{ scaleX: availableAnim }] }]}
+          />
+
           <Text style={styles.greeting}>{t('home.greeting', { name: firstName })}</Text>
           <View style={[styles.badge, { backgroundColor: status.background }]}>
             <Text style={[styles.badgeText, { color: status.color }]}>{t(status.labelKey)}</Text>
@@ -206,7 +234,8 @@ export default function HomeScreen() {
                 value={isAvailable}
                 onValueChange={handleToggle}
                 disabled={!approved}
-                trackColor={{ true: colors.success }}
+                trackColor={{ true: colors.signal, false: colors.border }}
+                ios_backgroundColor={colors.border}
               />
             )}
           </View>
@@ -215,7 +244,7 @@ export default function HomeScreen() {
             <View style={styles.reconnect}>
               <Text style={styles.reconnectText}>{t('home.lastAvailable')}</Text>
               <View style={styles.reconnectActions}>
-                <Pressable onPress={dismissReconnect} style={styles.reconnectButton}>
+                <Pressable onPress={dismissReconnect} style={styles.reconnectButton} hitSlop={6}>
                   <Text style={styles.dismissText}>{t('home.dismiss')}</Text>
                 </Pressable>
                 <Pressable onPress={() => handleToggle(true)} style={[styles.reconnectButton, styles.reconnectPrimary]}>
@@ -241,47 +270,64 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: space.xl,
     backgroundColor: colors.background,
   },
   card: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 32,
+    left: space.md,
+    right: space.md,
+    bottom: space.xl,
     backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
+    borderRadius: radius.sheet,
+    padding: space.lg,
+    paddingTop: space.xl,
+    overflow: 'hidden', // clips the stripe to the rounded corners
+    shadowColor: colors.text,
     shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
-  greeting: { fontSize: 20, fontWeight: 'bold', color: colors.text },
+  stripe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 8,
+    backgroundColor: colors.signal,
+    transformOrigin: 'left',
+  },
+  greeting: type.cardTitle,
   badge: {
     alignSelf: 'flex-start',
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    marginTop: 8,
+    paddingVertical: space.xs,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    marginTop: space.sm,
   },
-  badgeText: { fontSize: 13, fontWeight: 'bold' },
+  badgeText: { fontFamily: fonts.semibold, fontSize: 13 },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: space.lg,
   },
-  switchLabel: { fontSize: 17, fontWeight: '600', color: colors.text },
-  reconnect: { marginTop: 12, padding: 12, borderRadius: 8, backgroundColor: colors.surface },
-  reconnectText: { fontSize: 14, color: colors.text },
-  reconnectActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
-  reconnectButton: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 6, marginLeft: 8 },
+  switchLabel: { fontFamily: fonts.bold, fontSize: 22, color: colors.text },
+  reconnect: { marginTop: space.md, padding: space.md, borderRadius: radius.card, backgroundColor: colors.surface },
+  reconnectText: type.body,
+  reconnectActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: space.sm },
+  reconnectButton: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: space.lg,
+    borderRadius: radius.control,
+    marginLeft: space.sm,
+  },
   reconnectPrimary: { backgroundColor: colors.primary },
-  reconnectPrimaryText: { color: colors.primaryText, fontWeight: '600' },
-  dismissText: { color: colors.muted, fontWeight: '600' },
-  note: { fontSize: 14, color: colors.muted, marginTop: 8 },
-  notice: { fontSize: 14, fontWeight: '600', marginTop: 8 },
-  errorText: { fontSize: 14, color: colors.error, marginTop: 8, textAlign: 'center' },
+  reconnectPrimaryText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.primaryText },
+  dismissText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
+  note: { ...type.body, color: colors.muted, marginTop: space.sm },
+  notice: { fontFamily: fonts.semibold, fontSize: 14, marginTop: space.sm },
+  errorText: { ...type.body, color: colors.error, marginTop: space.sm, textAlign: 'center' },
 });

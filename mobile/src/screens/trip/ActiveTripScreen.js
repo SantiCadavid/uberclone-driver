@@ -1,11 +1,13 @@
-// AI-assisted: see docs/AI_LOG.md #16, #18, #23
+// AI-assisted: see docs/AI_LOG.md #16, #18, #23, #26, #28
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useDriver } from '../../context/DriverContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useTripPayment } from '../../hooks/useTripPayment';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import Button from '../../components/common/Button';
 import {
   cancelTripByDriver,
   finishTrip,
@@ -20,6 +22,8 @@ import { TRIP_CONFIG, TRIP_STATUS } from '../../config/trip';
 import { PAYMENT_STATUS } from '../../config/payment';
 import { LOCATION_CONFIG } from '../../config/location';
 import { colors, toneColors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
 
@@ -48,31 +52,38 @@ function FareRows({ trip, t }) {
         value={`-${formatCop(trip.commission)}`}
       />
       <Row label={t('trip.tip')} value={formatCop(trip.tip)} />
-      <Row label={t('trip.netEarnings')} value={formatCop(trip.driverEarnings)} strong />
+      <Row label={t('trip.netEarnings')} value={formatCop(trip.driverEarnings)} strong valueColor={colors.success} />
       <Row label={t('trip.paymentMethod')} value={paymentMethodLabel(trip.paymentMethod, t)} />
     </>
   );
 }
 
-function ActionButton({ label, onPress, loading, disabled, variant = 'primary' }) {
-  const isPrimary = variant === 'primary';
+// Confirms that the money was recorded: a short bounce that answers the payment
+function PaidMark({ reduceMotion }) {
+  const scale = useRef(new Animated.Value(reduceMotion ? 1 : 0.5)).current;
+  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const animation = Animated.parallel([
+      Animated.spring(scale, { toValue: 1, damping: 10, stiffness: 220, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }),
+    ]);
+    animation.start();
+    // Cleanup: stop it if the summary closes right away
+    return () => animation.stop();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <Pressable
-      style={[styles.actionButton, isPrimary ? styles.actionPrimary : styles.actionSecondary, disabled && styles.disabled]}
-      onPress={onPress}
-      disabled={disabled}
-    >
-      {loading ? (
-        <ActivityIndicator color={isPrimary ? colors.primaryText : colors.text} />
-      ) : (
-        <Text style={isPrimary ? styles.primaryText : styles.secondaryText}>{label}</Text>
-      )}
-    </Pressable>
+    <Animated.View style={[styles.paidMark, { opacity, transform: [{ scale }] }]}>
+      <Text style={styles.paidMarkText}>✓</Text>
+    </Animated.View>
   );
 }
 
 export default function ActiveTripScreen({ navigation }) {
   const { t } = useLanguage();
+  const reduceMotion = useReducedMotion();
   const { uid, driver, activeTrip, summaryTripId, summaryTrip, summaryError, dismissSummary } = useDriver();
   // Summary mode: the trip was just paid and is no longer "active"
   const isSummary = !activeTrip && Boolean(summaryTripId);
@@ -126,7 +137,7 @@ export default function ActiveTripScreen({ navigation }) {
       ? [toLatLng(trip.origin), toLatLng(trip.destination)]
       : [toLatLng(trip.origin), ...(location ? [location] : [])];
     mapRef.current?.fitToCoordinates(points, {
-      edgePadding: { top: 80, right: 60, bottom: 380, left: 60 },
+      edgePadding: { top: 80, right: 60, bottom: 400, left: 60 },
       animated: true,
     });
   }, [trip?.id, status]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -181,7 +192,7 @@ export default function ActiveTripScreen({ navigation }) {
         {isSummary && summaryError ? (
           <>
             <Text style={styles.centeredText}>{t(summaryError)}</Text>
-            <ActionButton label={t('trip.continue')} onPress={dismissSummary} />
+            <Button label={t('trip.continue')} onPress={dismissSummary} style={styles.fullButton} />
           </>
         ) : (
           <ActivityIndicator size="large" color={colors.primary} />
@@ -201,7 +212,7 @@ export default function ActiveTripScreen({ navigation }) {
         return (
           <View style={styles.inline}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={[styles.subtitle, styles.inlineText]}>{t('trip.calculatingPickup')}</Text>
+            <Text style={styles.inlineText}>{t('trip.calculatingPickup')}</Text>
           </View>
         );
 
@@ -216,12 +227,19 @@ export default function ActiveTripScreen({ navigation }) {
               </Text>
             )}
             <View style={styles.buttons}>
-              <Pressable style={[styles.button, styles.secondary]} onPress={handleCancel} disabled={busy}>
-                <Text style={styles.secondaryText}>{t('trip.cancel')}</Text>
-              </Pressable>
-              <Pressable style={[styles.button, styles.primary]} onPress={handlePickedUp} disabled={busy}>
-                {busy ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryText}>{t('trip.passengerOnBoard')}</Text>}
-              </Pressable>
+              <Button
+                label={t('trip.cancel')}
+                variant="secondary"
+                onPress={handleCancel}
+                disabled={busy}
+                style={styles.buttonLeft}
+              />
+              <Button
+                label={t('trip.passengerOnBoard')}
+                onPress={handlePickedUp}
+                loading={busy}
+                style={styles.buttonRight}
+              />
             </View>
           </>
         );
@@ -234,9 +252,7 @@ export default function ActiveTripScreen({ navigation }) {
             <Text style={styles.subtitle}>
               {trip.distanceKm} km · {trip.durationMin} min · {paymentMethodLabel(trip.paymentMethod, t)}
             </Text>
-            <Pressable style={[styles.button, styles.primary, styles.fullButton]} onPress={handleFinish} disabled={busy}>
-              {busy ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryText}>{t('trip.finish')}</Text>}
-            </Pressable>
+            <Button label={t('trip.finish')} onPress={handleFinish} loading={busy} style={styles.fullButton} />
           </>
         );
 
@@ -248,23 +264,31 @@ export default function ActiveTripScreen({ navigation }) {
             <FareRows trip={trip} t={t} />
             <Row label={t('trip.paymentStatus')} value={paymentInfo.label} valueColor={toneColors[paymentInfo.tone]} strong />
             {actions.canPayWithCard && (
-              <ActionButton
+              <Button
                 label={paymentInfo.status === PAYMENT_STATUS.REJECTED ? t('trip.retryCard') : t('trip.payCard')}
                 onPress={payWithCard}
                 loading={busyAction === 'card'}
-                disabled={paymentBusy}
+                disabled={paymentBusy && busyAction !== 'card'}
+                style={styles.fullButton}
               />
             )}
             {actions.canVerify && (
-              <ActionButton label={t('trip.verify')} onPress={verify} loading={busyAction === 'verify'} disabled={paymentBusy} />
+              <Button
+                label={t('trip.verify')}
+                onPress={verify}
+                loading={busyAction === 'verify'}
+                disabled={paymentBusy && busyAction !== 'verify'}
+                style={styles.fullButton}
+              />
             )}
             {actions.canMarkCash && (
-              <ActionButton
+              <Button
                 label={t('trip.cashReceived')}
                 variant={actions.canPayWithCard ? 'secondary' : 'primary'}
                 onPress={handleCash}
                 loading={busyAction === 'cash'}
-                disabled={paymentBusy}
+                disabled={paymentBusy && busyAction !== 'cash'}
+                style={styles.fullButton}
               />
             )}
           </>
@@ -274,7 +298,10 @@ export default function ActiveTripScreen({ navigation }) {
       case TRIP_STATUS.paid:
         return (
           <>
-            <Text style={styles.title}>{t('trip.paidTitle')}</Text>
+            <View style={styles.paidHeader}>
+              <PaidMark reduceMotion={reduceMotion} />
+              <Text style={[styles.title, styles.paidTitle]}>{t('trip.paidTitle')}</Text>
+            </View>
             <FareRows trip={trip} t={t} />
             <Row label={t('trip.paymentStatus')} value={paymentInfo.label} valueColor={toneColors[paymentInfo.tone]} strong />
             <Row label={t('trip.balance')} value={formatCop(driver?.balance)} />
@@ -282,7 +309,7 @@ export default function ActiveTripScreen({ navigation }) {
               <Text style={styles.note}>{t('trip.cashNote', { commission: formatCop(trip.commission) })}</Text>
             )}
             {trip.paymentMethodChangedFrom && <Text style={styles.note}>{t('trip.changedNote')}</Text>}
-            {isSummary && <ActionButton label={t('trip.continue')} onPress={dismissSummary} />}
+            {isSummary && <Button label={t('trip.continue')} onPress={dismissSummary} style={styles.fullButton} />}
           </>
         );
 
@@ -314,11 +341,12 @@ export default function ActiveTripScreen({ navigation }) {
           description={trip.destination.address}
           pinColor="red"
         />
+        {/* To the pickup: dashed like a lane marking. The trip itself: a solid asphalt line */}
         {showPickupLeg && pickupPath?.length > 1 && (
-          <Polyline coordinates={pickupPath} strokeWidth={4} strokeColor="#2563EB" />
+          <Polyline coordinates={pickupPath} strokeWidth={5} strokeColor={colors.primary} lineDashPattern={[10, 8]} />
         )}
         {!showPickupLeg && trip.routePath?.length > 1 && (
-          <Polyline coordinates={trip.routePath} strokeWidth={4} strokeColor={colors.primary} />
+          <Polyline coordinates={trip.routePath} strokeWidth={5} strokeColor={colors.primary} />
         )}
       </MapView>
 
@@ -336,42 +364,52 @@ export default function ActiveTripScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: colors.background },
-  centeredText: { fontSize: 15, color: colors.text, textAlign: 'center' },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xl,
+    backgroundColor: colors.background,
+  },
+  centeredText: { ...type.body, textAlign: 'center' },
   card: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 32,
+    left: space.md,
+    right: space.md,
+    bottom: space.xl,
     backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
+    borderRadius: radius.sheet,
+    padding: space.lg,
+    shadowColor: colors.text,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   inline: { flexDirection: 'row', alignItems: 'center' },
-  inlineText: { marginTop: 0, marginLeft: 8 },
-  title: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-  address: { fontSize: 15, color: colors.text, marginTop: 6 },
-  subtitle: { fontSize: 14, color: colors.muted, marginTop: 6 },
-  buttons: { flexDirection: 'row', marginTop: 16 },
-  button: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  fullButton: { marginTop: 16 },
-  primary: { backgroundColor: colors.primary, marginLeft: 8 },
-  secondary: { borderWidth: 1, borderColor: colors.border, marginRight: 8 },
-  actionButton: { alignSelf: 'stretch', paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 12 },
-  actionPrimary: { backgroundColor: colors.primary },
-  actionSecondary: { borderWidth: 1, borderColor: colors.border },
-  disabled: { opacity: 0.5 },
-  primaryText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  secondaryText: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  rowLabel: { fontSize: 15, color: colors.muted },
-  rowValue: { fontSize: 15, color: colors.text },
-  rowStrong: { fontWeight: 'bold', color: colors.success },
-  note: { fontSize: 13, color: colors.muted, marginTop: 10 },
-  message: { fontSize: 14, marginTop: 10, fontWeight: '600' },
+  inlineText: { ...type.body, color: colors.muted, marginLeft: space.sm },
+  title: type.cardTitle,
+  address: { ...type.body, marginTop: space.xs },
+  subtitle: { ...type.caption, marginTop: space.xs },
+  buttons: { flexDirection: 'row', marginTop: space.lg },
+  buttonLeft: { flex: 1, marginRight: space.sm },
+  buttonRight: { flex: 1, marginLeft: space.sm },
+  fullButton: { alignSelf: 'stretch', marginTop: space.md },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.sm },
+  rowLabel: { ...type.body, color: colors.muted },
+  rowValue: { ...type.money, fontSize: 15, fontFamily: fonts.medium },
+  rowStrong: { fontFamily: fonts.bold, fontSize: 16 },
+  paidHeader: { flexDirection: 'row', alignItems: 'center' },
+  paidTitle: { marginLeft: space.sm },
+  paidMark: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paidMarkText: { color: colors.primaryText, fontFamily: fonts.bold, fontSize: 18 },
+  note: { ...type.caption, marginTop: space.sm },
+  message: { fontFamily: fonts.semibold, fontSize: 14, marginTop: space.md },
 });
