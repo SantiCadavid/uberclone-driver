@@ -1,11 +1,10 @@
-// AI-assisted: see docs/AI_LOG.md #21, #22, #25
+// AI-assisted: see docs/AI_LOG.md #21, #22, #25, #29
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import { signOutDriver, updateDriverProfile } from '../../services/driverService
 import TextField from '../../components/form/TextField';
 import SelectField from '../../components/form/SelectField';
 import LanguageSelector from '../../components/common/LanguageSelector';
+import Button from '../../components/common/Button';
 import {
   GENDER_OPTIONS,
   REGISTRATION_RULES as RULES,
@@ -30,6 +30,8 @@ import { hasErrors } from '../../utils/validators';
 import { formatDate } from '../../utils/dates';
 import { withTimeout } from '../../utils/withTimeout';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 // Firestore returns Timestamps; the profile also tolerates plain Dates or missing values
 const toDate = (value) => value?.toDate?.() ?? (value instanceof Date ? value : null);
@@ -162,13 +164,13 @@ function ProfileContent({ uid, driver }) {
         <InfoRow label={t('profile.birthDate')} value={formatDate(toDate(driver.birthDate))} />
         <Text style={styles.note}>{t('profile.readOnlyNote')}</Text>
 
-        <Pressable
-          style={[styles.button, (!changed || saving) && styles.buttonDisabled]}
+        <Button
+          label={t('profile.save')}
           onPress={handleSave}
-          disabled={!changed || saving}
-        >
-          {saving ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.buttonText}>{t('profile.save')}</Text>}
-        </Pressable>
+          disabled={!changed}
+          loading={saving}
+          style={styles.saveButton}
+        />
         {message && (
           <Text style={[styles.message, { color: message.type === 'success' ? colors.success : colors.error }]}>
             {message.text}
@@ -215,9 +217,13 @@ function ProfileContent({ uid, driver }) {
         )}
         <Text style={styles.note}>{t('profile.vehicleNote')}</Text>
 
-        <Pressable style={styles.logout} onPress={handleLogout} disabled={loggingOut}>
-          {loggingOut ? <ActivityIndicator color={colors.error} /> : <Text style={styles.logoutText}>{t('profile.logout')}</Text>}
-        </Pressable>
+        <Button
+          label={t('profile.logout')}
+          variant="danger"
+          onPress={handleLogout}
+          loading={loggingOut}
+          style={styles.logoutButton}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -248,38 +254,35 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 48 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  content: { padding: space.xl, paddingBottom: space.xxl + space.lg },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, backgroundColor: colors.background },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: space.sm },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: colors.primaryText, fontSize: 22, fontWeight: 'bold' },
-  headerText: { marginLeft: 16, flex: 1 },
-  name: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-  muted: { fontSize: 14, color: colors.muted, marginTop: 2 },
-  section: { fontSize: 17, fontWeight: 'bold', color: colors.text, marginTop: 20, marginBottom: 10 },
-  vehiclePhoto: { width: '100%', height: 180, borderRadius: 10, marginBottom: 8, backgroundColor: colors.surface },
+  avatarText: { fontFamily: fonts.bold, fontSize: 24, color: colors.primaryText },
+  headerText: { marginLeft: space.lg, flex: 1 },
+  name: type.cardTitle,
+  muted: { ...type.caption, marginTop: 2 },
+  section: { ...type.section, marginTop: space.xl, marginBottom: space.md },
+  vehiclePhoto: { width: '100%', height: 180, borderRadius: radius.card, marginBottom: space.sm, backgroundColor: colors.surface },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: space.sm + 2,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  infoLabel: { fontSize: 15, color: colors.muted },
-  infoValue: { fontSize: 15, color: colors.text, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
-  note: { fontSize: 13, color: colors.muted, marginTop: 10 },
-  button: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 16 },
-  buttonDisabled: { backgroundColor: '#9CA3AF' },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  message: { fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 10 },
-  logout: { marginTop: 28, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: colors.error, borderRadius: 8 },
-  logoutText: { color: colors.error, fontSize: 16, fontWeight: '600' },
-  errorText: { fontSize: 15, color: colors.error, textAlign: 'center' },
+  infoLabel: { ...type.body, color: colors.muted },
+  infoValue: { ...type.body, flexShrink: 1, textAlign: 'right', marginLeft: space.md },
+  note: { ...type.caption, marginTop: space.sm },
+  saveButton: { marginTop: space.lg },
+  message: { fontFamily: fonts.semibold, fontSize: 14, textAlign: 'center', marginTop: space.md },
+  logoutButton: { marginTop: space.xxl },
+  errorText: { ...type.body, color: colors.error, textAlign: 'center' },
 });

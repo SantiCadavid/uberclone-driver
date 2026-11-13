@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #19, #24
+// AI-assisted: see docs/AI_LOG.md #19, #24, #29
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLanguage } from '../../context/LanguageContext';
@@ -6,6 +6,8 @@ import { categoryLabel, formatCop, paymentMethodLabel } from '../../utils/format
 import { formatDateTime } from '../../utils/dates';
 import { getPaymentStatusInfo } from '../../utils/paymentStatus';
 import { colors, toneColors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { space } from '../../theme/layout';
 
 // One row of the history. memo: it only re-renders if its trip (or the language) changes.
 function TripHistoryItem({ trip, onPress }) {
@@ -20,13 +22,15 @@ function TripHistoryItem({ trip, onPress }) {
       <Text style={styles.route} numberOfLines={2}>
         {trip.origin?.address ?? '—'} → {trip.destination?.address ?? '—'}
       </Text>
-      <View style={styles.row}>
+      <View style={styles.footer}>
         <Text style={styles.meta}>
           {categoryLabel(trip.category, t)} · {paymentMethodLabel(trip.paymentMethod, t)}
         </Text>
-        <Text style={styles.meta}>{t('history.fare', { amount: formatCop(trip.fare) })}</Text>
+        <View style={styles.amounts}>
+          <Text style={styles.fare}>{t('history.fare', { amount: formatCop(trip.fare) })}</Text>
+          <Text style={styles.earnings}>{formatCop(trip.driverEarnings)}</Text>
+        </View>
       </View>
-      <Text style={styles.earnings}>{t('history.net', { amount: formatCop(trip.driverEarnings) })}</Text>
     </Pressable>
   );
 }
@@ -34,13 +38,21 @@ function TripHistoryItem({ trip, onPress }) {
 export default memo(TripHistoryItem);
 
 const styles = StyleSheet.create({
-  item: { backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border, padding: 16 },
+  item: {
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+  },
   pressed: { backgroundColor: colors.surface },
   header: { flexDirection: 'row', justifyContent: 'space-between' },
-  date: { fontSize: 13, color: colors.muted },
-  status: { fontSize: 13, fontWeight: 'bold' },
-  route: { fontSize: 15, color: colors.text, marginTop: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  meta: { fontSize: 13, color: colors.muted },
-  earnings: { fontSize: 15, fontWeight: 'bold', color: colors.success, marginTop: 6 },
+  date: type.caption,
+  status: { fontFamily: fonts.semibold, fontSize: 13 },
+  route: { ...type.body, marginTop: space.xs },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: space.sm },
+  meta: { ...type.caption, flexShrink: 1, marginRight: space.sm },
+  amounts: { alignItems: 'flex-end' },
+  fare: { ...type.caption, fontVariant: ['tabular-nums'] },
+  earnings: { ...type.money, fontSize: 18, color: colors.success },
 });
