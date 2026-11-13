@@ -1,8 +1,8 @@
-// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20
+// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20, #21
 import { deleteUser } from 'firebase/auth';
 import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
-import { getAuthErrorMessage, registerWithEmail } from './authService';
+import { getAuthErrorMessage, logout, registerWithEmail } from './authService';
 import { buildDriverDocument } from '../utils/driverDocument';
 
 export async function registerDriver(personalData, vehicleData, documentsData) {
@@ -48,6 +48,21 @@ export function updateDriverLocation(uid, { latitude, longitude }) {
   return updateDoc(doc(db, 'drivers', uid), {
     location: { lat: latitude, lng: longitude, updatedAt: serverTimestamp() },
   });
+}
+
+// Profile edits: callers send only editable fields (see utils/profileValidators.js) or the language.
+// The Firestore rules (step 22) block approvalStatus, balance and other protected fields.
+export function updateDriverProfile(uid, changes) {
+  return updateDoc(doc(db, 'drivers', uid), {
+    ...changes,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// Never leave a driver "available" after logging out
+export async function signOutDriver(uid, isAvailable) {
+  if (uid && isAvailable) await setDriverAvailability(uid, false);
+  await logout();
 }
 
 export function getRegistrationErrorMessage(error) {

@@ -1,8 +1,9 @@
-// AI-assisted: see docs/AI_LOG.md #5, #6, #10, #13, #16, #18
+// AI-assisted: see docs/AI_LOG.md #5, #6, #10, #13, #16, #18, #21
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useDriver } from '../context/DriverContext';
+import { LanguageProvider, useLanguage } from '../context/LanguageContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import ActiveTripScreen from '../screens/trip/ActiveTripScreen';
 import RegisterTabs from './RegisterTabs';
@@ -11,9 +12,10 @@ import { colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
 
-export default function RootNavigator() {
+function AppNavigator() {
   const { user, initializing, registrationInProgress } = useAuth();
   const { activeTrip, summaryTripId } = useDriver();
+  const { t } = useLanguage();
 
   // While Firebase checks for a saved session, show a loader instead of flashing the Login
   if (initializing) {
@@ -37,7 +39,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="ActiveTrip"
             component={ActiveTripScreen}
-            options={{ title: 'Viaje en curso', gestureEnabled: false }}
+            options={{ title: t('nav.activeTrip'), gestureEnabled: false }}
           />
         ) : (
           // Drawer for Home, History, Earnings, Profile and the passenger simulator
@@ -46,14 +48,20 @@ export default function RootNavigator() {
       ) : (
         <>
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen
-            name="Register"
-            component={RegisterTabs}
-            options={{ title: 'Registro de conductor' }}
-          />
+          <Stack.Screen name="Register" component={RegisterTabs} options={{ title: t('nav.register') }} />
         </>
       )}
     </Stack.Navigator>
+  );
+}
+
+export default function RootNavigator() {
+  const { uid, driver } = useDriver();
+  // One language for every screen, available even before login
+  return (
+    <LanguageProvider uid={uid} profileLanguage={driver?.language}>
+      <AppNavigator />
+    </LanguageProvider>
   );
 }
 
