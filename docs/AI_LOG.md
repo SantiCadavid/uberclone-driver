@@ -451,3 +451,19 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
   | 21 | Sin limpieza en useDriverLocation: el GPS sigue escribiendo; restaurado con git restore | ✓ |
   Hallazgo: "Cobrar con Mercado Pago" mostró de forma intermitente "El servidor de pagos no está disponible" aunque el backend funcionaba en las demás pruebas; la app respondió con un mensaje claro y sin cerrarse. [COMPLETAR con el diagnóstico]
 - Aprendizaje: Entendí que probar como alguien que intenta romper la app revela comportamientos que las pruebas normales no muestran, que un fallo intermitente se diagnostica con datos (registros e inspector de red) y no adivinando, y que la prueba de quitar la limpieza de un useEffect hace visible por qué existe. Haría distinto: ejecutar estas pruebas al cerrar cada módulo y no solo al final.
+
+### Entrada #32
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Cerrar el proyecto (paso 23C): renovar credenciales de prueba, verificar que no hay secretos en el repositorio, revisar y exportar la bitácora y hacer el PR final.
+- Prompt: "Guiar el cierre del proyecto: renovar el Access Token de prueba de Mercado Pago que se vio en capturas, comprobar con Git que ningún .env ni la clave de servicio están en el repositorio ni en su historial, buscar campos pendientes en la bitácora, exportarla a PDF y preparar el PR final con la lista de entregables."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se entregaron los pasos para renovar el token y probarlo, los comandos de verificación de secretos (git ls-files, git log sobre los archivos sensibles y .gitignore), la búsqueda de campos pendientes en la bitácora, la exportación a PDF desde GitHub y el PR final.
+- Qué se usó / modificó / descartó:
+  - Usado: comandos de Git para auditar el historial, impresión a PDF desde la vista de GitHub.
+  - Modificado: MP_ACCESS_TOKEN renovado solo en backend/.env (fuera del repositorio).
+  - Descartado: guardar capturas en el repositorio y extensiones nuevas para exportar el PDF.
+- Archivos y commit: docs/AI_LOG.md, docs/AI_LOG.pdf — [HASH]
+- Verificación: [COMPLETAR] pago APRO exitoso con el token renovado; sin .env ni clave de servicio en el repositorio ni en el historial; bitácora sin campos pendientes; repositorio público; PR final fusionado.
+- Aprendizaje: Entendí que cerrar un proyecto incluye auditarlo: credenciales, historial de Git y documentación, no solo que el código funcione. Haría distinto: no mostrar credenciales en capturas desde el principio y llenar cada campo de la bitácora en el momento.
