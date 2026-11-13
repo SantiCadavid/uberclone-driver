@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #21
+// AI-assisted: see docs/AI_LOG.md #21, #22
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,18 +16,22 @@ import { signOutDriver, updateDriverProfile } from '../../services/driverService
 import TextField from '../../components/form/TextField';
 import SelectField from '../../components/form/SelectField';
 import LanguageSelector from '../../components/common/LanguageSelector';
-import { GENDER_OPTIONS, REGISTRATION_RULES as RULES, VEHICLE_COLOR_OPTIONS } from '../../config/registration';
+import {
+  GENDER_OPTIONS,
+  REGISTRATION_RULES as RULES,
+  VEHICLE_CATEGORY_OPTIONS,
+  VEHICLE_COLOR_OPTIONS,
+} from '../../config/registration';
 import { TRIP_CONFIG } from '../../config/trip';
+import { optionLabel, translateOptions } from '../../i18n';
 import { buildProfileUpdate, hasProfileChanges, validateProfileData } from '../../utils/profileValidators';
 import { hasErrors } from '../../utils/validators';
 import { formatDate } from '../../utils/dates';
-import { categoryLabel } from '../../utils/format';
 import { withTimeout } from '../../utils/withTimeout';
 import { colors } from '../../theme/colors';
 
 // Firestore returns Timestamps; the profile also tolerates plain Dates or missing values
 const toDate = (value) => value?.toDate?.() ?? (value instanceof Date ? value : null);
-const optionLabel = (options, value) => options.find((option) => option.value === value)?.label ?? '—';
 const toForm = (driver) => ({ fullName: driver.fullName ?? '', phone: driver.phone ?? '', gender: driver.gender ?? null });
 const initials = (name) =>
   (name ?? '')
@@ -54,8 +58,9 @@ function ProfileContent({ uid, driver }) {
   const [message, setMessage] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // Same validators as the sign-up, recalculated only when the form changes
-  const errors = useMemo(() => validateProfileData(form), [form]);
+  // Same validators as the sign-up, recalculated when the form or the language changes
+  const errors = useMemo(() => validateProfileData(form, t), [form, t]);
+  const genderOptions = useMemo(() => translateOptions(GENDER_OPTIONS, t), [t]);
   const changed = hasProfileChanges(driver, form);
   const errorFor = (field) => (touched[field] ? errors[field] : null);
 
@@ -142,7 +147,7 @@ function ProfileContent({ uid, driver }) {
         <SelectField
           label={t('profile.gender')}
           value={form.gender}
-          options={GENDER_OPTIONS}
+          options={genderOptions}
           onChange={(value) => updateField('gender', value)}
           error={errorFor('gender')}
         />
@@ -165,11 +170,11 @@ function ProfileContent({ uid, driver }) {
         )}
 
         <Text style={styles.section}>{t('profile.vehicle')}</Text>
-        <InfoRow label={t('profile.category')} value={categoryLabel(vehicle.category)} />
+        <InfoRow label={t('profile.category')} value={optionLabel(VEHICLE_CATEGORY_OPTIONS, vehicle.category, t)} />
         <InfoRow label={t('profile.plate')} value={vehicle.plate ?? '—'} />
         <InfoRow label={t('profile.brandModel')} value={`${vehicle.brand ?? '—'} ${vehicle.model ?? ''}`.trim()} />
         <InfoRow label={t('profile.year')} value={vehicle.year ? String(vehicle.year) : '—'} />
-        <InfoRow label={t('profile.color')} value={optionLabel(VEHICLE_COLOR_OPTIONS, vehicle.color)} />
+        <InfoRow label={t('profile.color')} value={optionLabel(VEHICLE_COLOR_OPTIONS, vehicle.color, t)} />
         <InfoRow label={t('profile.capacity')} value={vehicle.capacity ? String(vehicle.capacity) : '—'} />
 
         <Text style={styles.section}>{t('profile.documents')}</Text>

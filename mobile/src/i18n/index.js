@@ -1,10 +1,17 @@
-// AI-assisted: see docs/AI_LOG.md #21
+// AI-assisted: see docs/AI_LOG.md #21, #22
 import es from './es';
 import en from './en';
+import esRegistration from './es.registration';
+import enRegistration from './en.registration';
 
 export const SUPPORTED_LANGUAGES = ['es', 'en'];
 export const DEFAULT_LANGUAGE = 'es';
-export const TRANSLATIONS = { es, en };
+
+// One dictionary per language, merged from one file per area (a test checks both have the same keys)
+export const TRANSLATIONS = {
+  es: { ...es, ...esRegistration },
+  en: { ...en, ...enRegistration },
+};
 
 // Locale used by date pickers and date formatting
 const LOCALES = { es: 'es-CO', en: 'en-US' };
@@ -25,3 +32,18 @@ export function translate(language, key, params = {}) {
 
 // Spanish translator used as default parameter by pure functions (keeps their tests unchanged)
 export const defaultT = (key, params) => translate(DEFAULT_LANGUAGE, key, params);
+
+// Dropdown options store a value + labelKey; this returns them with the label in the app language
+export function translateOptions(options, t) {
+  return options.map((option) => ({
+    value: option.value,
+    label: option.labelKey ? t(option.labelKey) : option.label,
+  }));
+}
+
+// Label of one stored value (e.g. 'white' -> 'Blanco' / 'White'); '—' when unknown
+export function optionLabel(options, value, t) {
+  const option = options.find((item) => item.value === value);
+  if (!option) return '—';
+  return option.labelKey ? t(option.labelKey) : option.label;
+}

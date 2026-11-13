@@ -1,19 +1,21 @@
-// AI-assisted: see docs/AI_LOG.md #8
+// AI-assisted: see docs/AI_LOG.md #8, #22
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import FormField from './FormField';
 import { pickImageFromCamera, pickImageFromLibrary } from '../../services/imagePicker';
+import { useLanguage } from '../../context/LanguageContext';
 import { colors } from '../../theme/colors';
 
 export default function PhotoField({ label, error, value, onChange, aspect = [1, 1], round = false }) {
-  const [pickerError, setPickerError] = useState(null);
+  const { t } = useLanguage();
+  const [pickerErrorKey, setPickerErrorKey] = useState(null);
 
   const handlePick = async (source) => {
-    setPickerError(null);
+    setPickerErrorKey(null);
     const result =
       source === 'camera' ? await pickImageFromCamera(aspect) : await pickImageFromLibrary(aspect);
-    if (result.error) {
-      setPickerError(result.error);
+    if (result.errorKey) {
+      setPickerErrorKey(result.errorKey);
       return;
     }
     if (result.uri) onChange(result.uri);
@@ -23,21 +25,21 @@ export default function PhotoField({ label, error, value, onChange, aspect = [1,
 
   return (
     // A permission problem is shown first; otherwise the validation error
-    <FormField label={label} error={pickerError ?? error}>
+    <FormField label={label} error={pickerErrorKey ? t(pickerErrorKey) : error}>
       <View style={styles.row}>
         {value ? (
           <Image source={{ uri: value }} style={previewStyle} />
         ) : (
           <View style={[previewStyle, styles.emptyPreview, error && styles.emptyPreviewError]}>
-            <Text style={styles.emptyText}>Sin foto</Text>
+            <Text style={styles.emptyText}>{t('photo.empty')}</Text>
           </View>
         )}
         <View style={styles.buttons}>
           <Pressable style={styles.button} onPress={() => handlePick('camera')}>
-            <Text style={styles.buttonText}>Tomar foto</Text>
+            <Text style={styles.buttonText}>{t('photo.camera')}</Text>
           </Pressable>
           <Pressable style={styles.button} onPress={() => handlePick('library')}>
-            <Text style={styles.buttonText}>Elegir de galería</Text>
+            <Text style={styles.buttonText}>{t('photo.library')}</Text>
           </Pressable>
         </View>
       </View>
@@ -50,7 +52,7 @@ const styles = StyleSheet.create({
   preview: { width: 96, height: 96, borderRadius: 8 },
   round: { borderRadius: 48 },
   emptyPreview: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',

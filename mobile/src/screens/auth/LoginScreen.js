@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #6, #20, #21
+// AI-assisted: see docs/AI_LOG.md #6, #20, #21, #22
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -31,8 +31,8 @@ export default function LoginScreen({ navigation }) {
     if (loading) return; // Prevents a double submit (button or keyboard key)
     Keyboard.dismiss();
     const newErrors = {
-      email: validateEmail(email),
-      password: validateRequired(password),
+      email: validateEmail(email, t),
+      password: validateRequired(password, t),
     };
     setErrors(newErrors);
     setSubmitError(null);

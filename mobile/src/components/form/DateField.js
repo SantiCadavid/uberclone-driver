@@ -1,14 +1,16 @@
-// AI-assisted: see docs/AI_LOG.md #8, #20
+// AI-assisted: see docs/AI_LOG.md #8, #20, #22
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import FormField from './FormField';
 import { formStyles } from './formStyles';
+import { useLanguage } from '../../context/LanguageContext';
 import { colors } from '../../theme/colors';
 
 const DEFAULT_PICKER_DATE = new Date(2000, 0, 1);
 
 const pad = (number) => String(number).padStart(2, '0');
+// dd/mm/yyyy in both languages: the app is for Colombia
 const formatDate = (date) =>
   `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 
@@ -21,6 +23,7 @@ export default function DateField({
   minimumDate,
   initialDate = DEFAULT_PICKER_DATE,
 }) {
+  const { t, locale } = useLanguage();
   const [open, setOpen] = useState(false);
   const [draftDate, setDraftDate] = useState(value ?? initialDate);
 
@@ -47,7 +50,7 @@ export default function DateField({
         onPress={openPicker}
       >
         <Text style={value ? formStyles.valueText : formStyles.placeholderText}>
-          {value ? formatDate(value) : 'Selecciona una fecha'}
+          {value ? formatDate(value) : t('date.placeholder')}
         </Text>
         <Text style={styles.icon}>📅</Text>
       </Pressable>
@@ -73,17 +76,17 @@ export default function DateField({
                 mode="date"
                 display="spinner"
                 themeVariant="light"
-                locale="es-CO"
+                locale={locale}
                 maximumDate={maximumDate}
                 minimumDate={minimumDate}
                 onChange={(event, selectedDate) => selectedDate && setDraftDate(selectedDate)}
               />
               <View style={styles.actions}>
                 <Pressable style={styles.actionButton} onPress={() => setOpen(false)}>
-                  <Text style={styles.cancelText}>Cancelar</Text>
+                  <Text style={styles.cancelText}>{t('date.cancel')}</Text>
                 </Pressable>
                 <Pressable style={styles.actionButton} onPress={confirmIosDate}>
-                  <Text style={styles.confirmText}>Listo</Text>
+                  <Text style={styles.confirmText}>{t('date.confirm')}</Text>
                 </Pressable>
               </View>
             </View>

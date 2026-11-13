@@ -1,5 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #8, #20
+// AI-assisted: see docs/AI_LOG.md #8, #20, #22
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { useLanguage } from './LanguageContext';
 import { validatePersonalData, validateVehicleData } from '../utils/validators';
 import { isTechnicalInspectionRequired, validateDocumentsData } from '../utils/documentValidators';
 
@@ -11,7 +12,7 @@ const INITIAL_PERSONAL_DATA = {
   birthDate: null,
   gender: null,
   email: '',
-  language: 'es',
+  language: null, // taken from the app language (LanguageContext), never stored twice
   password: '',
   confirmPassword: '',
 };
@@ -49,7 +50,8 @@ const markFieldTouched = (previous, field) =>
 const RegistrationContext = createContext(null);
 
 export function RegistrationProvider({ children }) {
-  const [personalData, setPersonalData] = useState(INITIAL_PERSONAL_DATA);
+  const { language, setLanguage, t } = useLanguage();
+  const [personalFields, setPersonalFields] = useState(INITIAL_PERSONAL_DATA);
   const [vehicleData, setVehicleData] = useState(INITIAL_VEHICLE_DATA);
   const [documentsData, setDocumentsData] = useState(INITIAL_DOCUMENTS_DATA);
   // A field shows its error after the user changes it, leaves it, or tries to continue
@@ -57,10 +59,20 @@ export function RegistrationProvider({ children }) {
   const [vehicleTouched, setVehicleTouched] = useState({});
   const [documentsTouched, setDocumentsTouched] = useState({});
 
-  const updatePersonalField = useCallback((field, value) => {
-    setPersonalData((previous) => ({ ...previous, [field]: value }));
-    setPersonalTouched((previous) => markFieldTouched(previous, field));
-  }, []);
+  // The sign-up language IS the app language ("mismo selector de la app")
+  const personalData = useMemo(() => ({ ...personalFields, language }), [personalFields, language]);
+
+  const updatePersonalField = useCallback(
+    (field, value) => {
+      if (field === 'language') {
+        setLanguage(value); // changes the whole app, the sign-up included
+        return;
+      }
+      setPersonalFields((previous) => ({ ...previous, [field]: value }));
+      setPersonalTouched((previous) => markFieldTouched(previous, field));
+    },
+    [setLanguage],
+  );
 
   const updateVehicleField = useCallback((field, value) => {
     setVehicleData((previous) => ({ ...previous, [field]: value }));
@@ -72,7 +84,7 @@ export function RegistrationProvider({ children }) {
     setDocumentsTouched((previous) => markFieldTouched(previous, field));
   }, []);
 
-  // Used on blur: leaving an empty field shows "Este campo es obligatorio."
+  // Used on blur: leaving an empty field shows the "required" error
   const touchPersonalField = useCallback((field) => {
     setPersonalTouched((previous) => markFieldTouched(previous, field));
   }, []);
@@ -97,9 +109,9 @@ export function RegistrationProvider({ children }) {
     setDocumentsTouched(markAllTouched(INITIAL_DOCUMENTS_DATA));
   }, []);
 
-  // Errors are recalculated only when the data of that tab changes
-  const personalErrors = useMemo(() => validatePersonalData(personalData), [personalData]);
-  const vehicleErrors = useMemo(() => validateVehicleData(vehicleData), [vehicleData]);
+  // Errors are recalculated when the data of that tab OR the language changes
+  const personalErrors = useMemo(() => validatePersonalData(personalData, undefined, t), [personalData, t]);
+  const vehicleErrors = useMemo(() => validateVehicleData(vehicleData, undefined, t), [vehicleData, t]);
 
   // The inspection requirement depends on the vehicle year (tab 2), so it is also a dependency here
   const vehicleYear = vehicleData.year;
@@ -108,8 +120,8 @@ export function RegistrationProvider({ children }) {
     [vehicleYear],
   );
   const documentsErrors = useMemo(
-    () => validateDocumentsData(documentsData, { vehicleYear }),
-    [documentsData, vehicleYear],
+    () => validateDocumentsData(documentsData, { vehicleYear, t }),
+    [documentsData, vehicleYear, t],
   );
 
   const value = useMemo(

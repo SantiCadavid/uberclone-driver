@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #20
+// AI-assisted: see docs/AI_LOG.md #20, #22
 import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useRegistration } from '../../context/RegistrationContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { getRegistrationErrorMessage, registerDriver } from '../../services/driverService';
 import TextField from '../../components/form/TextField';
 import DateField from '../../components/form/DateField';
@@ -38,6 +39,7 @@ const farthestExpiry = () => {
 };
 
 export default function DocumentsScreen({ navigation }) {
+  const { t } = useLanguage();
   const { setRegistrationInProgress } = useAuth();
   const {
     personalData,
@@ -89,7 +91,7 @@ export default function DocumentsScreen({ navigation }) {
       await registerDriver(personalData, vehicleData, documentsData);
       // Success: when the flag goes back to false, RootNavigator shows Home
     } catch (error) {
-      setSubmitError(getRegistrationErrorMessage(error));
+      setSubmitError(getRegistrationErrorMessage(error, t));
     } finally {
       setSubmitting(false);
       setRegistrationInProgress(false);
@@ -109,28 +111,28 @@ export default function DocumentsScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
-        <Text style={styles.title}>Documentos y pagos</Text>
+        <Text style={styles.title}>{t('register.documents.title')}</Text>
 
-        <Text style={styles.section}>Licencia de conducción</Text>
+        <Text style={styles.section}>{t('register.license')}</Text>
         <TextField
-          label="Número de licencia"
+          label={t('register.licenseNumber')}
           value={documentsData.licenseNumber}
           onChangeText={(text) => updateDocumentsField('licenseNumber', text)}
           onBlur={() => touchDocumentsField('licenseNumber')}
           error={errorFor('licenseNumber')}
-          placeholder="Solo números"
+          placeholder={t('register.licenseNumberPlaceholder')}
           keyboardType="number-pad"
           maxLength={RULES.licenseNumberMaxDigits}
         />
         <PhotoField
-          label="Foto de la licencia"
+          label={t('register.licensePhoto')}
           value={documentsData.licensePhoto}
           onChange={(uri) => updateDocumentsField('licensePhoto', uri)}
           error={errorFor('licensePhoto')}
           aspect={[4, 3]}
         />
         <DateField
-          label="Vencimiento de la licencia"
+          label={t('register.licenseExpiry')}
           value={documentsData.licenseExpiry}
           onChange={(date) => updateDocumentsField('licenseExpiry', date)}
           error={errorFor('licenseExpiry')}
@@ -139,16 +141,16 @@ export default function DocumentsScreen({ navigation }) {
           initialDate={tomorrow}
         />
 
-        <Text style={styles.section}>SOAT</Text>
+        <Text style={styles.section}>{t('register.soat')}</Text>
         <PhotoField
-          label="Foto del SOAT"
+          label={t('register.soatPhoto')}
           value={documentsData.soatPhoto}
           onChange={(uri) => updateDocumentsField('soatPhoto', uri)}
           error={errorFor('soatPhoto')}
           aspect={[4, 3]}
         />
         <DateField
-          label="Vencimiento del SOAT"
+          label={t('register.soatExpiry')}
           value={documentsData.soatExpiry}
           onChange={(date) => updateDocumentsField('soatExpiry', date)}
           error={errorFor('soatExpiry')}
@@ -157,21 +159,21 @@ export default function DocumentsScreen({ navigation }) {
           initialDate={tomorrow}
         />
 
-        <Text style={styles.section}>Revisión técnico-mecánica</Text>
+        <Text style={styles.section}>{t('register.inspection')}</Text>
         {technicalInspectionRequired ? (
           <>
             <Text style={styles.note}>
-              Obligatoria para vehículos con {RULES.technicalInspectionAfterYears} años o más.
+              {t('register.inspectionRequired', { years: RULES.technicalInspectionAfterYears })}
             </Text>
             <PhotoField
-              label="Foto de la revisión técnico-mecánica"
+              label={t('register.inspectionPhoto')}
               value={documentsData.techPhoto}
               onChange={(uri) => updateDocumentsField('techPhoto', uri)}
               error={errorFor('techPhoto')}
               aspect={[4, 3]}
             />
             <DateField
-              label="Vencimiento de la revisión"
+              label={t('register.inspectionExpiry')}
               value={documentsData.techExpiry}
               onChange={(date) => updateDocumentsField('techExpiry', date)}
               error={errorFor('techExpiry')}
@@ -182,29 +184,29 @@ export default function DocumentsScreen({ navigation }) {
           </>
         ) : (
           <Text style={styles.note}>
-            No aplica: tu vehículo ({vehicleData.year}) tiene menos de {RULES.technicalInspectionAfterYears} años.
+            {t('register.inspectionNotRequired', {
+              year: vehicleData.year,
+              years: RULES.technicalInspectionAfterYears,
+            })}
           </Text>
         )}
 
-        <Text style={styles.section}>Pagos</Text>
-        <Text style={styles.note}>
-          Escribe el correo de tu cuenta de Mercado Pago, donde recibirías tus pagos. La app no guarda números
-          de cuenta bancaria ni de tarjeta: de eso se encarga la pasarela de pago.
-        </Text>
+        <Text style={styles.section}>{t('register.payments')}</Text>
+        <Text style={styles.note}>{t('register.paymentsNote')}</Text>
         <TextField
-          label="Correo de la cuenta de Mercado Pago"
+          label={t('register.mercadoPagoEmail')}
           value={documentsData.mercadoPagoEmail}
           onChangeText={(text) => updateDocumentsField('mercadoPagoEmail', text)}
           onBlur={() => touchDocumentsField('mercadoPagoEmail')}
           error={errorFor('mercadoPagoEmail')}
-          placeholder="nombre@dominio.com"
+          placeholder={t('register.emailPlaceholder')}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
         />
 
         <CheckboxField
-          label={`Acepto los términos y condiciones y que la plataforma cobra una comisión del ${commissionPercent} % sobre la tarifa de cada viaje (las propinas son completas para mí).`}
+          label={t('register.terms', { percent: commissionPercent })}
           checked={documentsData.acceptedTerms}
           onChange={(accepted) => updateDocumentsField('acceptedTerms', accepted)}
           error={errorFor('acceptedTerms')}
@@ -212,21 +214,21 @@ export default function DocumentsScreen({ navigation }) {
 
         <View style={styles.statusBox}>
           <TabStatus
-            label="Datos personales"
+            label={t('register.tab.personal')}
             valid={personalValid}
-            actionLabel="Completar"
+            actionLabel={t('register.status.fill')}
             onAction={() => goToTab('PersonalData', touchAllPersonal)}
           />
           <TabStatus
-            label="Vehículo"
+            label={t('register.tab.vehicle')}
             valid={vehicleValid}
-            actionLabel="Completar"
+            actionLabel={t('register.status.fill')}
             onAction={() => goToTab('Vehicle', touchAllVehicle)}
           />
           <TabStatus
-            label="Documentos"
+            label={t('register.tab.documents')}
             valid={documentsValid}
-            actionLabel="Ver errores"
+            actionLabel={t('register.status.showErrors')}
             onAction={showDocumentErrors}
           />
         </View>
@@ -239,7 +241,7 @@ export default function DocumentsScreen({ navigation }) {
           {submitting ? (
             <ActivityIndicator color={colors.primaryText} />
           ) : (
-            <Text style={styles.buttonText}>Enviar registro</Text>
+            <Text style={styles.buttonText}>{t('register.submit')}</Text>
           )}
         </Pressable>
         {submitError && <Text style={styles.submitError}>{submitError}</Text>}

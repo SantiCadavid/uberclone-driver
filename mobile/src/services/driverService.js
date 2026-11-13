@@ -1,9 +1,10 @@
-// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20, #21
+// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20, #21, #22
 import { deleteUser } from 'firebase/auth';
 import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getAuthErrorMessage, logout, registerWithEmail } from './authService';
 import { buildDriverDocument } from '../utils/driverDocument';
+import { defaultT } from '../i18n';
 
 export async function registerDriver(personalData, vehicleData, documentsData) {
   // 1. Create the account in Firebase Auth (the password stays there)
@@ -65,13 +66,9 @@ export async function signOutDriver(uid, isAvailable) {
   await logout();
 }
 
-export function getRegistrationErrorMessage(error) {
-  if (error?.code?.startsWith('auth/')) return getAuthErrorMessage(error);
-  if (error?.code === 'permission-denied') {
-    return 'La base de datos rechazó el registro. Revisa las reglas de Firestore.';
-  }
-  if (error?.code === 'unavailable') {
-    return 'Sin conexión con la base de datos. Revisa tu red e inténtalo de nuevo.';
-  }
-  return 'No se pudo completar el registro. Inténtalo de nuevo.';
+export function getRegistrationErrorMessage(error, t = defaultT) {
+  if (error?.code?.startsWith('auth/')) return getAuthErrorMessage(error, t);
+  if (error?.code === 'permission-denied') return t('register.error.permission');
+  if (error?.code === 'unavailable') return t('register.error.network');
+  return t('register.error.unknown');
 }
