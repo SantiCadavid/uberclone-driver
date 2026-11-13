@@ -1,11 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #24
 import { useEffect, useMemo, useState } from 'react';
-import { getHistoryErrorMessage, subscribeToPaidTrips } from '../services/historyService';
+import { getHistoryErrorKey, subscribeToPaidTrips } from '../services/historyService';
 import { filterTripsByRange, summarizeEarnings } from '../utils/earnings';
 import { getPeriodRange } from '../utils/dates';
 import { PERIODS } from '../config/history';
 
-// Custom hook required by the guide: earnings of today, this week and this month
+// Custom hook required by the guide: earnings of today, this week and this month.
+// "error" is a translation key.
 export function useEarnings(driverId) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +36,7 @@ export function useEarnings(driverId) {
       },
       (subscriptionError) => {
         if (__DEV__) console.warn('Earnings error:', subscriptionError?.message);
-        setError(getHistoryErrorMessage(subscriptionError));
+        setError(getHistoryErrorKey(subscriptionError));
         setLoading(false);
       },
     );

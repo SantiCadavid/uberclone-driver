@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #13
+// AI-assisted: see docs/AI_LOG.md #13, #23
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { updateDriverLocation } from '../services/driverService';
@@ -11,6 +11,7 @@ const toCoords = (position) => ({
 
 // Custom hook: asks for permission, centers the map and, while "tracking" is true,
 // watches the position and sends it to Firestore every few seconds.
+// "error" is a translation key; the screen shows it in the current language.
 export function useDriverLocation({ uid, tracking }) {
   const [location, setLocation] = useState(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -34,7 +35,7 @@ export function useDriverLocation({ uid, tracking }) {
         });
         if (!cancelled) setLocation(toCoords(current));
       } catch (locationError) {
-        if (!cancelled) setError('No se pudo obtener tu ubicación.');
+        if (!cancelled) setError('location.error.position');
       }
     })();
 
@@ -68,16 +69,14 @@ export function useDriverLocation({ uid, tracking }) {
             const now = Date.now();
             if (now - lastWriteRef.current >= LOCATION_CONFIG.firestoreWriteIntervalMs) {
               lastWriteRef.current = now;
-              updateDriverLocation(uid, coords).catch(() =>
-                setError('No se pudo enviar tu ubicación. Revisa tu conexión.'),
-              );
+              updateDriverLocation(uid, coords).catch(() => setError('location.error.send'));
             }
           },
         );
         // The cleanup may have run while we were waiting for the watcher: stop it right away
         if (cancelled) subscription.remove();
       } catch (watchError) {
-        if (!cancelled) setError('No se pudo iniciar el seguimiento de ubicación.');
+        if (!cancelled) setError('location.error.watch');
       }
     })();
 

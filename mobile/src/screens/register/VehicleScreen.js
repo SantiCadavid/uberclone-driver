@@ -1,92 +1,52 @@
-// AI-assisted: see docs/AI_LOG.md #9, #10
-import { useRef, useState } from 'react';
+// AI-assisted: see docs/AI_LOG.md #9, #10, #20, #22
+import { useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  View,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
 import { useRegistration } from '../../context/RegistrationContext';
-import { getRegistrationErrorMessage, registerDriver } from '../../services/driverService';
+import { useLanguage } from '../../context/LanguageContext';
 import TextField from '../../components/form/TextField';
 import SelectField from '../../components/form/SelectField';
 import PhotoField from '../../components/form/PhotoField';
 import {
+  CAPACITY_BY_CATEGORY,
+  MAX_VEHICLE_CAPACITY,
   REGISTRATION_RULES as RULES,
   VEHICLE_CATEGORY_OPTIONS,
   VEHICLE_COLOR_OPTIONS,
 } from '../../config/registration';
+import { translateOptions } from '../../i18n';
 import { hasErrors } from '../../utils/validators';
 import { colors } from '../../theme/colors';
 
-function TabStatus({ label, valid, actionLabel, onAction }) {
-  return (
-    <View style={styles.statusRow}>
-      <Text style={[styles.statusText, valid ? styles.statusOk : styles.statusPending]}>
-        {valid ? '✓' : '✗'} {label}: {valid ? 'completo' : 'incompleto'}
-      </Text>
-      {!valid && (
-        <Pressable onPress={onAction}>
-          <Text style={styles.statusAction}>{actionLabel}</Text>
-        </Pressable>
-      )}
-    </View>
-  );
-}
-
 export default function VehicleScreen({ navigation }) {
-  const { setRegistrationInProgress } = useAuth();
-  const {
-    personalData,
-    vehicleData,
-    vehicleErrors,
-    vehicleTouched,
-    personalErrors,
-    updateVehicleField,
-    touchVehicleField,
-    touchAllVehicle,
-    touchAllPersonal,
-  } = useRegistration();
+  const { t } = useLanguage();
+  const { vehicleData, vehicleErrors, vehicleTouched, updateVehicleField, touchVehicleField, touchAllVehicle } =
+    useRegistration();
   const scrollRef = useRef(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [triedToContinue, setTriedToContinue] = useState(false);
+
+  const categoryOptions = useMemo(() => translateOptions(VEHICLE_CATEGORY_OPTIONS, t), [t]);
+  const colorOptions = useMemo(() => translateOptions(VEHICLE_COLOR_OPTIONS, t), [t]);
+  const capacityRange = CAPACITY_BY_CATEGORY[vehicleData.category] ?? { min: 1, max: MAX_VEHICLE_CAPACITY };
 
   const errorFor = (field) => (vehicleTouched[field] ? vehicleErrors[field] : null);
+  const showSummary = triedToContinue && hasErrors(vehicleErrors);
 
-  const personalValid = !hasErrors(personalErrors);
-  const vehicleValid = !hasErrors(vehicleErrors);
-  // The guide: "Enviar registro" is enabled only when every tab is complete and valid
-  const canSubmit = personalValid && vehicleValid && !submitting;
-
-  const showVehicleErrors = () => {
+  const handleNext = () => {
     touchAllVehicle();
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
-  };
-
-  const goToPersonalData = () => {
-    touchAllPersonal();
-    navigation.navigate('PersonalData');
-  };
-
-  const handleSubmit = async () => {
-    if (submitting) return; // Prevents a double submit
-    setSubmitting(true);
-    setSubmitError(null);
-    setRegistrationInProgress(true);
-    try {
-      await registerDriver(personalData, vehicleData);
-      // Success: when the flag goes back to false, RootNavigator shows Home
-    } catch (error) {
-      setSubmitError(getRegistrationErrorMessage(error));
-    } finally {
-      setSubmitting(false);
-      setRegistrationInProgress(false);
+    if (hasErrors(vehicleErrors)) {
+      setTriedToContinue(true);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
     }
+    setTriedToContinue(false);
+    navigation.navigate('Documents');
   };
 
   return (
@@ -100,115 +60,95 @@ export default function VehicleScreen({ navigation }) {
         style={styles.container}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
-        <Text style={styles.title}>Vehículo</Text>
+        <Text style={styles.title}>{t('register.tab.vehicle')}</Text>
 
         <SelectField
-          label="Categoría"
+          label={t('register.category')}
           value={vehicleData.category}
-          options={VEHICLE_CATEGORY_OPTIONS}
+          options={categoryOptions}
           onChange={(value) => updateVehicleField('category', value)}
           error={errorFor('category')}
         />
 
         <TextField
-          label="Placa"
+          label={t('register.plate')}
           value={vehicleData.plate}
           // Uppercase while typing; the validator also removes spaces and dashes
           onChangeText={(text) => updateVehicleField('plate', text.toUpperCase())}
           onBlur={() => touchVehicleField('plate')}
           error={errorFor('plate')}
-          placeholder="Ej. ABC123"
+          placeholder={t('register.platePlaceholder')}
           autoCapitalize="characters"
           autoCorrect={false}
           maxLength={7}
         />
 
         <TextField
-          label="Marca"
+          label={t('register.brand')}
           value={vehicleData.brand}
           onChangeText={(text) => updateVehicleField('brand', text)}
           onBlur={() => touchVehicleField('brand')}
           error={errorFor('brand')}
-          placeholder="Ej. Renault"
+          placeholder={t('register.brandPlaceholder')}
           maxLength={RULES.maxBrandLength}
         />
 
         <TextField
-          label="Modelo"
+          label={t('register.model')}
           value={vehicleData.model}
           onChangeText={(text) => updateVehicleField('model', text)}
           onBlur={() => touchVehicleField('model')}
           error={errorFor('model')}
-          placeholder="Ej. Duster"
+          placeholder={t('register.modelPlaceholder')}
           maxLength={RULES.maxModelLength}
         />
 
         <TextField
-          label="Año"
+          label={t('register.year')}
           value={vehicleData.year}
           onChangeText={(text) => updateVehicleField('year', text)}
           onBlur={() => touchVehicleField('year')}
           error={errorFor('year')}
-          placeholder="Ej. 2022"
+          placeholder={t('register.yearPlaceholder')}
           keyboardType="number-pad"
           maxLength={4}
         />
 
         <SelectField
-          label="Color"
+          label={t('register.color')}
           value={vehicleData.color}
-          options={VEHICLE_COLOR_OPTIONS}
+          options={colorOptions}
           onChange={(value) => updateVehicleField('color', value)}
           error={errorFor('color')}
         />
 
         <TextField
-          label="Capacidad de pasajeros"
+          label={t('register.capacity')}
           value={vehicleData.capacity}
           onChangeText={(text) => updateVehicleField('capacity', text)}
           onBlur={() => touchVehicleField('capacity')}
           error={errorFor('capacity')}
-          placeholder={vehicleData.category === 'xl' ? 'Entre 6 y 8 para XL' : 'Entre 1 y 4'}
+          placeholder={t('register.capacityPlaceholder', capacityRange)}
           keyboardType="number-pad"
           maxLength={2}
         />
 
         <PhotoField
-          label="Foto del vehículo (debe verse la placa)"
+          label={t('register.vehiclePhoto')}
           value={vehicleData.vehiclePhoto}
           onChange={(uri) => updateVehicleField('vehiclePhoto', uri)}
           error={errorFor('vehiclePhoto')}
           aspect={[4, 3]}
         />
 
-        <View style={styles.statusBox}>
-          <TabStatus
-            label="Datos personales"
-            valid={personalValid}
-            actionLabel="Completar"
-            onAction={goToPersonalData}
-          />
-          <TabStatus
-            label="Vehículo"
-            valid={vehicleValid}
-            actionLabel="Ver errores"
-            onAction={showVehicleErrors}
-          />
-        </View>
+        {/* Above the button so the tab bar never hides it */}
+        {showSummary && <Text style={styles.summaryError}>{t('register.summaryError')}</Text>}
 
-        <Pressable
-          style={[styles.button, !canSubmit && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {submitting ? (
-            <ActivityIndicator color={colors.primaryText} />
-          ) : (
-            <Text style={styles.buttonText}>Enviar registro</Text>
-          )}
+        <Pressable style={styles.button} onPress={handleNext}>
+          <Text style={styles.buttonText}>{t('register.nextDocuments')}</Text>
         </Pressable>
-        {submitError && <Text style={styles.submitError}>{submitError}</Text>}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -219,30 +159,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 16 },
-  statusBox: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+  summaryError: {
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontWeight: '600',
   },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  statusText: { fontSize: 15, fontWeight: '600' },
-  statusOk: { color: '#15803D' },
-  statusPending: { color: colors.error },
-  statusAction: { fontSize: 15, color: colors.text, textDecorationLine: 'underline' },
   button: {
     backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 8,
   },
-  buttonDisabled: { backgroundColor: '#9CA3AF' },
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  submitError: { color: colors.error, textAlign: 'center', marginTop: 12, fontWeight: '600' },
 });

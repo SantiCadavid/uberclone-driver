@@ -1,10 +1,10 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #24
 import { useCallback, useRef, useState } from 'react';
-import { fetchTripHistoryPage, getHistoryErrorMessage } from '../services/historyService';
+import { fetchTripHistoryPage, getHistoryErrorKey } from '../services/historyService';
 import { withTimeout } from '../utils/withTimeout';
 import { HISTORY_CONFIG } from '../config/history';
 
-// Custom hook: paginated history (20 per page) for the selected filters
+// Custom hook: paginated history (20 per page) for the selected filters. "error" is a translation key.
 export function useTripHistory({ driverId, range, paymentMethod }) {
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,7 @@ export function useTripHistory({ driverId, range, paymentMethod }) {
       if (__DEV__) console.warn('History error:', loadError?.message);
       setTrips([]);
       setHasMore(false);
-      setError(getHistoryErrorMessage(loadError));
+      setError(getHistoryErrorKey(loadError));
     } finally {
       if (requestId === requestIdRef.current) setLoading(false);
     }
@@ -70,7 +70,7 @@ export function useTripHistory({ driverId, range, paymentMethod }) {
       });
       setHasMore(page.hasMore);
     } catch (loadError) {
-      if (requestId === requestIdRef.current) setError(getHistoryErrorMessage(loadError));
+      if (requestId === requestIdRef.current) setError(getHistoryErrorKey(loadError));
     } finally {
       loadingMoreRef.current = false;
       setLoadingMore(false);

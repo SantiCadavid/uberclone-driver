@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #6
+// AI-assisted: see docs/AI_LOG.md #6, #21
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -6,6 +6,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { defaultT } from '../i18n';
 
 // Returns the unsubscribe function so the caller can stop listening (useEffect cleanup)
 export function subscribeToAuthChanges(callback) {
@@ -26,17 +27,17 @@ export function logout() {
   return signOut(auth);
 }
 
-const AUTH_ERROR_MESSAGES = {
-  'auth/invalid-credential': 'Correo o contraseña incorrectos.',
-  'auth/invalid-email': 'El correo no tiene un formato válido.',
-  'auth/user-disabled': 'Esta cuenta está deshabilitada.',
-  'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.',
-  'auth/network-request-failed': 'Sin conexión a internet. Revisa tu red e inténtalo de nuevo.',
-  'auth/email-already-in-use': 'Ya existe una cuenta con este correo.',
-  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+const AUTH_ERROR_KEYS = {
+  'auth/invalid-credential': 'auth.invalidCredential',
+  'auth/invalid-email': 'auth.invalidEmail',
+  'auth/user-disabled': 'auth.userDisabled',
+  'auth/too-many-requests': 'auth.tooManyRequests',
+  'auth/network-request-failed': 'auth.network',
+  'auth/email-already-in-use': 'auth.emailInUse',
+  'auth/weak-password': 'auth.weakPassword',
 };
 
-// Translates Firebase error codes into clear messages for the user
-export function getAuthErrorMessage(error) {
-  return AUTH_ERROR_MESSAGES[error?.code] ?? 'Ocurrió un error inesperado. Inténtalo de nuevo.';
+// Translates Firebase error codes into clear messages, in the app language
+export function getAuthErrorMessage(error, t = defaultT) {
+  return t(AUTH_ERROR_KEYS[error?.code] ?? 'auth.unknown');
 }

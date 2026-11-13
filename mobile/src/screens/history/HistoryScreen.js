@@ -1,19 +1,21 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #24
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
 import { useDriver } from '../../context/DriverContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTripHistory } from '../../hooks/useTripHistory';
 import SegmentedControl from '../../components/common/SegmentedControl';
 import TripHistoryItem from '../../components/trip/TripHistoryItem';
 import TripDetailModal from '../../components/trip/TripDetailModal';
 import { PAYMENT_FILTER_OPTIONS, PERIODS, PERIOD_OPTIONS } from '../../config/history';
+import { translateOptions } from '../../i18n';
 import { formatDate, getPeriodRange, startOfMonth, validateDateRange } from '../../utils/dates';
 import { colors } from '../../theme/colors';
 
 // Date field: compact picker on iOS, button + dialog on Android. Error under the field.
-function DateInput({ label, value, onChange, error }) {
+function DateInput({ label, value, onChange, error, locale }) {
   const [open, setOpen] = useState(false);
 
   const handleChange = (event, selected) => {
@@ -32,7 +34,7 @@ function DateInput({ label, value, onChange, error }) {
           maximumDate={new Date()}
           onChange={handleChange}
           themeVariant="light"
-          locale="es-CO"
+          locale={locale}
         />
       ) : (
         <>
@@ -49,14 +51,18 @@ function DateInput({ label, value, onChange, error }) {
 
 export default function HistoryScreen() {
   const { uid } = useDriver();
+  const { t, locale } = useLanguage();
   const [period, setPeriod] = useState(PERIODS.week);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [customRange, setCustomRange] = useState(() => ({ from: startOfMonth(new Date()), to: new Date() }));
   const [selectedTrip, setSelectedTrip] = useState(null);
 
+  const periodOptions = useMemo(() => translateOptions(PERIOD_OPTIONS, t), [t]);
+  const paymentOptions = useMemo(() => translateOptions(PAYMENT_FILTER_OPTIONS, t), [t]);
+
   const rangeErrors = useMemo(
-    () => (period === PERIODS.range ? validateDateRange(customRange.from, customRange.to) : { from: null, to: null }),
-    [period, customRange],
+    () => (period === PERIODS.range ? validateDateRange(customRange.from, customRange.to, t) : { from: null, to: null }),
+    [period, customRange, t],
   );
 
   // Recalculated only when the filter changes (null if the custom range is invalid)
@@ -81,40 +87,42 @@ export default function HistoryScreen() {
 
   const renderEmpty = () => {
     if (loading) return <ActivityIndicator style={styles.emptySpinner} size="large" color={colors.primary} />;
-    if (error) return <Text style={[styles.empty, styles.errorText]}>{error}</Text>;
-    if (!range) return <Text style={styles.empty}>Corrige el rango de fechas para ver tus viajes.</Text>;
-    return <Text style={styles.empty}>No tienes viajes en este periodo.</Text>;
+    if (error) return <Text style={[styles.empty, styles.errorText]}>{t(error)}</Text>;
+    if (!range) return <Text style={styles.empty}>{t('history.fixRange')}</Text>;
+    return <Text style={styles.empty}>{t('history.empty')}</Text>;
   };
 
   const renderFooter = () => {
     if (loadingMore) return <ActivityIndicator style={styles.footer} color={colors.primary} />;
-    if (error && trips.length > 0) return <Text style={[styles.footerText, styles.errorText]}>{error}</Text>;
-    if (trips.length > 0 && !hasMore) return <Text style={styles.footerText}>No hay más viajes.</Text>;
+    if (error && trips.length > 0) return <Text style={[styles.footerText, styles.errorText]}>{t(error)}</Text>;
+    if (trips.length > 0 && !hasMore) return <Text style={styles.footerText}>{t('history.end')}</Text>;
     return null;
   };
 
   return (
     <View style={styles.screen}>
       <View style={styles.filters}>
-        <SegmentedControl options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+        <SegmentedControl options={periodOptions} value={period} onChange={setPeriod} />
         {period === PERIODS.range && (
           <View style={styles.dates}>
             <DateInput
-              label="Desde"
+              label={t('history.from')}
               value={customRange.from}
               onChange={(from) => setCustomRange((current) => ({ ...current, from }))}
               error={rangeErrors.from}
+              locale={locale}
             />
             <DateInput
-              label="Hasta"
+              label={t('history.to')}
               value={customRange.to}
               onChange={(to) => setCustomRange((current) => ({ ...current, to }))}
               error={rangeErrors.to}
+              locale={locale}
             />
           </View>
         )}
         <View style={styles.paymentFilter}>
-          <SegmentedControl options={PAYMENT_FILTER_OPTIONS} value={paymentMethod} onChange={setPaymentMethod} />
+          <SegmentedControl options={paymentOptions} value={paymentMethod} onChange={setPaymentMethod} />
         </View>
       </View>
 

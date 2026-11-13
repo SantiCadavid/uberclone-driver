@@ -1,18 +1,20 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #24
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { PAYMENT_METHOD_LABELS, categoryLabel, formatCop } from '../../utils/format';
+import { useLanguage } from '../../context/LanguageContext';
+import { categoryLabel, formatCop, paymentMethodLabel } from '../../utils/format';
 import { formatDateTime } from '../../utils/dates';
 import { getPaymentStatusInfo } from '../../utils/paymentStatus';
 import { colors, toneColors } from '../../theme/colors';
 
-// One row of the history. memo: it only re-renders if its trip changes.
+// One row of the history. memo: it only re-renders if its trip (or the language) changes.
 function TripHistoryItem({ trip, onPress }) {
-  const payment = getPaymentStatusInfo(trip.paymentStatus);
+  const { t } = useLanguage();
+  const payment = getPaymentStatusInfo(trip.paymentStatus, t);
   return (
     <Pressable style={({ pressed }) => [styles.item, pressed && styles.pressed]} onPress={() => onPress(trip)}>
       <View style={styles.header}>
-        <Text style={styles.date}>{formatDateTime(trip.completedAtMs)}</Text>
+        <Text style={styles.date}>{formatDateTime(trip.completedAtMs, t)}</Text>
         <Text style={[styles.status, { color: toneColors[payment.tone] }]}>{payment.label}</Text>
       </View>
       <Text style={styles.route} numberOfLines={2}>
@@ -20,11 +22,11 @@ function TripHistoryItem({ trip, onPress }) {
       </Text>
       <View style={styles.row}>
         <Text style={styles.meta}>
-          {categoryLabel(trip.category)} · {PAYMENT_METHOD_LABELS[trip.paymentMethod] ?? '—'}
+          {categoryLabel(trip.category, t)} · {paymentMethodLabel(trip.paymentMethod, t)}
         </Text>
-        <Text style={styles.meta}>Tarifa {formatCop(trip.fare)}</Text>
+        <Text style={styles.meta}>{t('history.fare', { amount: formatCop(trip.fare) })}</Text>
       </View>
-      <Text style={styles.earnings}>Ganancia neta {formatCop(trip.driverEarnings)}</Text>
+      <Text style={styles.earnings}>{t('history.net', { amount: formatCop(trip.driverEarnings) })}</Text>
     </Pressable>
   );
 }

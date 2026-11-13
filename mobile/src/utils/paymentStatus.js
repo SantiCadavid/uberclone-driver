@@ -1,6 +1,7 @@
-// AI-assisted: see docs/AI_LOG.md #18
+// AI-assisted: see docs/AI_LOG.md #18, #23
 import { PAYMENT_STATUS } from '../config/payment';
 import { PAYMENT_METHODS, TRIP_STATUS } from '../config/trip';
+import { defaultT } from '../i18n';
 
 const PENDING_ALIASES = ['pending', 'in_process', 'authorized', 'in_mediation'];
 const REJECTED_ALIASES = ['rejected', 'cancelled', 'refunded', 'charged_back'];
@@ -16,18 +17,18 @@ export function normalizePaymentStatus(rawStatus) {
   return null;
 }
 
-const STATUS_INFO = {
-  [PAYMENT_STATUS.APPROVED]: { label: 'Aprobado', tone: 'success' },
-  [PAYMENT_STATUS.PENDING]: { label: 'Pendiente', tone: 'warning' },
-  [PAYMENT_STATUS.REJECTED]: { label: 'Rechazado', tone: 'danger' },
-  [PAYMENT_STATUS.CASH]: { label: 'Efectivo', tone: 'success' },
+const STATUS_TONES = {
+  [PAYMENT_STATUS.APPROVED]: 'success',
+  [PAYMENT_STATUS.PENDING]: 'warning',
+  [PAYMENT_STATUS.REJECTED]: 'danger',
+  [PAYMENT_STATUS.CASH]: 'success',
 };
 
 // Returns { status, label, tone }. The screen maps tone to a color in theme/colors.js.
-export function getPaymentStatusInfo(rawStatus) {
+export function getPaymentStatusInfo(rawStatus, t = defaultT) {
   const status = normalizePaymentStatus(rawStatus);
-  if (!status) return { status: null, label: 'Sin cobrar', tone: 'neutral' };
-  return { status, ...STATUS_INFO[status] };
+  if (!status) return { status: null, label: t('payment.status.none'), tone: 'neutral' };
+  return { status, label: t(`payment.status.${status}`), tone: STATUS_TONES[status] };
 }
 
 // Decides which collection buttons the driver can use for a trip.

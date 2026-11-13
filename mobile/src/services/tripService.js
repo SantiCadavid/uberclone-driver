@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #14, #15, #16, #18
+// AI-assisted: see docs/AI_LOG.md #14, #15, #16, #18, #23
 import {
   addDoc,
   collection,
@@ -22,6 +22,7 @@ import {
   TRIP_CONFIG,
   TRIP_STATUS,
 } from '../config/trip';
+import { defaultT } from '../i18n';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -111,18 +112,23 @@ export async function createSimulatedTrip({ driver, paymentMethod }) {
   return reference.id;
 }
 
-export function getSimulatorErrorMessage(error) {
+// Returns a translation key, so hooks can store it and the screen translates it in the current language
+export function getSimulatorErrorKey(error) {
   switch (error?.message) {
     case 'location-permission':
-      return 'Activa el permiso de ubicación para simular una solicitud cerca de ti.';
+      return 'simulator.error.permission';
     case 'route-not-found':
-      return 'No se encontró una ruta para los puntos generados. Inténtalo de nuevo.';
+      return 'simulator.error.routeNotFound';
     case 'route-unavailable':
     case 'timeout':
-      return 'El servicio de rutas no respondió. Revisa tu conexión e inténtalo de nuevo.';
+      return 'simulator.error.routeUnavailable';
     default:
-      return 'No se pudo crear la solicitud. Inténtalo de nuevo.';
+      return 'simulator.error.unknown';
   }
+}
+
+export function getSimulatorErrorMessage(error, t = defaultT) {
+  return t(getSimulatorErrorKey(error));
 }
 
 // ---------- Incoming requests ----------
@@ -266,25 +272,29 @@ export function cancelTripByDriver(tripId) {
   });
 }
 
-export function getTripErrorMessage(error) {
+// Returns a translation key (hooks store it; the screen translates it)
+export function getTripErrorKey(error) {
   switch (error?.message) {
     case 'trip-not-available':
     case 'trip-not-found':
-      return 'La solicitud ya no está disponible (fue aceptada, rechazada o cancelada).';
+      return 'trip.error.notAvailable';
     case 'trip-not-yours':
-      return 'Esta solicitud no está asignada a ti.';
+      return 'trip.error.notYours';
     case 'trip-invalid-state':
-      return 'El viaje cambió de estado mientras tanto. La pantalla ya muestra el estado actual.';
+      return 'trip.error.invalidState';
     case 'timeout':
-      return 'El servidor no respondió. Revisa tu conexión e inténtalo de nuevo.';
+      return 'trip.error.timeout';
     default:
-      return 'No se pudo procesar la solicitud. Inténtalo de nuevo.';
+      return 'trip.error.unknown';
   }
+}
+
+export function getTripErrorMessage(error, t = defaultT) {
+  return t(getTripErrorKey(error));
 }
 
 // ---------- Trip summary ----------
 
-// AI-assisted: see docs/AI_LOG.md #18
 // Real-time listener of one trip by id (final summary after payment). Null if it does not exist.
 export function subscribeToTrip(tripId, onData, onError) {
   return onSnapshot(

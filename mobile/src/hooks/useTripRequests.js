@@ -1,23 +1,22 @@
-// AI-assisted: see docs/AI_LOG.md #15
+// AI-assisted: see docs/AI_LOG.md #15, #23
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   acceptTrip,
-  getTripErrorMessage,
+  getTripErrorKey,
   rejectTrip,
   subscribeToTripRequests,
 } from '../services/tripService';
 import { withTimeout } from '../utils/withTimeout';
 import { TRIP_CONFIG } from '../config/trip';
 
-const ACTION_TIMEOUT_MS = 8000;
-
-// Custom hook: listens to incoming requests, runs the 15 s countdown and accepts/rejects
+// Custom hook: listens to incoming requests, runs the 15 s countdown and accepts/rejects.
+// Notices and errors are translation keys: the screen shows them in the current language.
 export function useTripRequests({ driverId, enabled }) {
   const [requests, setRequests] = useState([]);
   const [secondsLeft, setSecondsLeft] = useState(TRIP_CONFIG.requestTimeoutSeconds);
   const [processing, setProcessing] = useState(false);
-  const [notice, setNotice] = useState(null);
-  const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null); // { type, key }
+  const [error, setError] = useState(null); // key
 
   const handledIdsRef = useRef(new Set()); // requests this driver already answered
   const processingRef = useRef(false); // blocks a second tap before React re-renders
@@ -36,7 +35,7 @@ export function useTripRequests({ driverId, enabled }) {
         setRequests(items);
         setError(null);
       },
-      () => setError('No se pudieron cargar las solicitudes. Revisa tu conexión.'),
+      () => setError('request.error.load'),
     );
     // Cleanup: stop listening when the driver goes offline, leaves or logs out
     return unsubscribe;
@@ -55,16 +54,13 @@ export function useTripRequests({ driverId, enabled }) {
       setNotice(null);
       try {
         if (action === 'accept') {
-          await withTimeout(acceptTrip(request.id, driverId), ACTION_TIMEOUT_MS);
-          setNotice({ type: 'ok', text: 'Viaje aceptado.' });
+          await withTimeout(acceptTrip(request.id, driverId), TRIP_CONFIG.actionTimeoutMs);
+          setNotice({ type: 'ok', key: 'request.notice.accepted' });
         } else {
-          await withTimeout(rejectTrip(request.id, reason), ACTION_TIMEOUT_MS);
+          await withTimeout(rejectTrip(request.id, reason), TRIP_CONFIG.actionTimeoutMs);
           setNotice({
             type: 'info',
-            text:
-              reason === 'expired'
-                ? 'Se agotó el tiempo: la solicitud se rechazó automáticamente.'
-                : 'Solicitud rechazada.',
+            key: reason === 'expired' ? 'request.notice.expired' : 'request.notice.rejected',
           });
         }
         return true;
@@ -73,7 +69,7 @@ export function useTripRequests({ driverId, enabled }) {
         if (actionError?.message !== 'trip-not-available') {
           handledIdsRef.current.delete(request.id);
         }
-        setNotice({ type: 'error', text: getTripErrorMessage(actionError) });
+        setNotice({ type: 'error', key: getTripErrorKey(actionError) });
         return false;
       } finally {
         processingRef.current = false;
@@ -118,7 +114,7 @@ export function useTripRequests({ driverId, enabled }) {
   useEffect(() => {
     const previousId = previousIdRef.current;
     if (enabled && previousId && previousId !== requestId && !handledIdsRef.current.has(previousId)) {
-      setNotice({ type: 'info', text: 'La solicitud ya no está disponible: el pasajero la canceló.' });
+      setNotice({ type: 'info', key: 'request.notice.cancelled' });
     }
     previousIdRef.current = requestId;
   }, [requestId, enabled]);

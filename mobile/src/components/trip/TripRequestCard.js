@@ -1,7 +1,8 @@
-// AI-assisted: see docs/AI_LOG.md #15
+// AI-assisted: see docs/AI_LOG.md #15, #23
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLanguage } from '../../context/LanguageContext';
 import { TRIP_CONFIG } from '../../config/trip';
-import { PAYMENT_METHOD_LABELS, categoryLabel, formatCop } from '../../utils/format';
+import { categoryLabel, formatCop, paymentMethodLabel } from '../../utils/format';
 import { colors } from '../../theme/colors';
 
 function Detail({ label, value, highlight }) {
@@ -14,13 +15,14 @@ function Detail({ label, value, highlight }) {
 }
 
 export default function TripRequestCard({ request, secondsLeft, processing, onAccept, onReject }) {
+  const { t } = useLanguage();
   const progress = Math.max(0, secondsLeft / TRIP_CONFIG.requestTimeoutSeconds);
   const urgent = secondsLeft <= 5;
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>Nueva solicitud</Text>
+        <Text style={styles.title}>{t('request.title')}</Text>
         <Text style={[styles.timer, urgent && styles.timerUrgent]}>{secondsLeft}s</Text>
       </View>
       <View style={styles.progressTrack}>
@@ -31,23 +33,23 @@ export default function TripRequestCard({ request, secondsLeft, processing, onAc
 
       <Text style={styles.passenger}>{request.passengerName}</Text>
       <Text style={styles.place}>
-        <Text style={styles.placeLabel}>Origen: </Text>
+        <Text style={styles.placeLabel}>{t('request.origin')}</Text>
         {request.origin.address}
       </Text>
       <Text style={styles.place}>
-        <Text style={styles.placeLabel}>Destino: </Text>
+        <Text style={styles.placeLabel}>{t('request.destination')}</Text>
         {request.destination.address}
       </Text>
 
       <View style={styles.detailsRow}>
-        <Detail label="Distancia" value={`${request.distanceKm} km`} />
-        <Detail label="Duración" value={`${request.durationMin} min`} />
-        <Detail label="Categoría" value={categoryLabel(request.category)} />
+        <Detail label={t('request.distance')} value={`${request.distanceKm} km`} />
+        <Detail label={t('request.duration')} value={`${request.durationMin} min`} />
+        <Detail label={t('request.category')} value={categoryLabel(request.category, t)} />
       </View>
       <View style={styles.detailsRow}>
-        <Detail label="Pago" value={PAYMENT_METHOD_LABELS[request.paymentMethod] ?? '—'} />
-        <Detail label="Tarifa" value={formatCop(request.estimatedFare)} />
-        <Detail label="Tu ganancia" value={formatCop(request.estimatedDriverEarnings)} highlight />
+        <Detail label={t('request.payment')} value={paymentMethodLabel(request.paymentMethod, t)} />
+        <Detail label={t('request.fare')} value={formatCop(request.estimatedFare)} />
+        <Detail label={t('request.earnings')} value={formatCop(request.estimatedDriverEarnings)} highlight />
       </View>
 
       <View style={styles.buttons}>
@@ -56,7 +58,7 @@ export default function TripRequestCard({ request, secondsLeft, processing, onAc
           onPress={onReject}
           disabled={processing}
         >
-          <Text style={styles.rejectText}>Rechazar</Text>
+          <Text style={styles.rejectText}>{t('request.reject')}</Text>
         </Pressable>
         <Pressable
           style={[styles.button, styles.acceptButton, processing && styles.disabled]}
@@ -66,7 +68,7 @@ export default function TripRequestCard({ request, secondsLeft, processing, onAc
           {processing ? (
             <ActivityIndicator color={colors.primaryText} />
           ) : (
-            <Text style={styles.acceptText}>Aceptar</Text>
+            <Text style={styles.acceptText}>{t('request.accept')}</Text>
           )}
         </Pressable>
       </View>
@@ -109,7 +111,7 @@ const styles = StyleSheet.create({
   detail: { flex: 1 },
   detailLabel: { fontSize: 12, color: colors.muted },
   detailValue: { fontSize: 15, fontWeight: '600', color: colors.text, marginTop: 2 },
-  highlight: { color: '#15803D' },
+  highlight: { color: colors.success },
   buttons: { flexDirection: 'row', marginTop: 16 },
   button: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
   rejectButton: { borderWidth: 1, borderColor: colors.border, marginRight: 8 },

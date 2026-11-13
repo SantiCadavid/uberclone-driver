@@ -1,18 +1,13 @@
-// AI-assisted: see docs/AI_LOG.md #8
+// AI-assisted: see docs/AI_LOG.md #8, #22
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import FormField from './FormField';
 import { formStyles } from './formStyles';
+import { useLanguage } from '../../context/LanguageContext';
 import { colors } from '../../theme/colors';
 
-export default function SelectField({
-  label,
-  error,
-  value,
-  options,
-  onChange,
-  placeholder = 'Selecciona una opción',
-}) {
+export default function SelectField({ label, error, value, options, onChange, placeholder }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
 
@@ -28,7 +23,7 @@ export default function SelectField({
         onPress={() => setOpen(true)}
       >
         <Text style={selected ? formStyles.valueText : formStyles.placeholderText}>
-          {selected ? selected.label : placeholder}
+          {selected ? selected.label : placeholder ?? t('select.placeholder')}
         </Text>
         <Text style={styles.chevron}>▾</Text>
       </Pressable>

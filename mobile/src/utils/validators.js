@@ -1,5 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #6, #7, #12
-// Pure functions: each returns an error message (string) or null when the value is valid
+// AI-assisted: see docs/AI_LOG.md #6, #7, #12, #22
+// Pure functions: each returns an error message (string) or null when the value is valid.
+// "t" translates message keys; it defaults to Spanish so the tests and older callers keep working.
 import {
   CAPACITY_BY_CATEGORY,
   GENDER_OPTIONS,
@@ -9,6 +10,7 @@ import {
   VEHICLE_CATEGORY_OPTIONS,
   VEHICLE_COLOR_OPTIONS,
 } from '../config/registration';
+import { defaultT } from '../i18n';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const NAME_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]+$/;
@@ -17,89 +19,81 @@ const YEAR_REGEX = /^\d{4}$/;
 const PLATE_REGEX = /^[A-Z]{3}\d{3}$/;
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).+$/;
 
-const REQUIRED_MESSAGE = 'Este campo es obligatorio.';
-
 const isValidDate = (value) => value instanceof Date && !Number.isNaN(value.getTime());
 
-const categoryLabel = (value) =>
-  VEHICLE_CATEGORY_OPTIONS.find((option) => option.value === value)?.label ?? value;
+const categoryLabel = (value, t) => {
+  const option = VEHICLE_CATEGORY_OPTIONS.find((item) => item.value === value);
+  return option ? t(option.labelKey) : value;
+};
 
 // ---------- Generic ----------
 
-export function validateRequired(value, message = REQUIRED_MESSAGE) {
-  if (value === null || value === undefined) return message;
-  if (typeof value === 'string' && value.trim() === '') return message;
+export function validateRequired(value, t = defaultT) {
+  if (value === null || value === undefined) return t('validation.required');
+  if (typeof value === 'string' && value.trim() === '') return t('validation.required');
   return null;
 }
 
-export function validateEmail(value) {
-  const requiredError = validateRequired(value);
+export function validateEmail(value, t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
-  if (!EMAIL_REGEX.test(value.trim())) {
-    return 'Ingresa un correo válido (ej. nombre@dominio.com).';
-  }
+  if (!EMAIL_REGEX.test(value.trim())) return t('validation.email');
   return null;
 }
 
-export function validateOption(value, options, message = 'Selecciona una opción.') {
-  return options.some((option) => option.value === value) ? null : message;
+export function validateOption(value, options, messageKey = 'validation.option', t = defaultT) {
+  return options.some((option) => option.value === value) ? null : t(messageKey);
 }
 
-export function validatePhoto(uri, message) {
-  return uri ? null : message;
+export function validatePhoto(uri, messageKey, t = defaultT) {
+  return uri ? null : t(messageKey);
 }
 
-export function validateMaxLengthText(value, maxLength) {
-  const requiredError = validateRequired(value);
+export function validateMaxLengthText(value, maxLength, t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
-  if (value.trim().length > maxLength) return `Máximo ${maxLength} caracteres.`;
+  if (value.trim().length > maxLength) return t('validation.maxLength', { max: maxLength });
   return null;
 }
 
 // ---------- Tab 1: personal data ----------
 
-export function validateFullName(value) {
-  const requiredError = validateRequired(value);
+export function validateFullName(value, t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
   const name = value.trim();
   if (name.length > RULES.maxFullNameLength) {
-    return `Máximo ${RULES.maxFullNameLength} caracteres.`;
+    return t('validation.maxLength', { max: RULES.maxFullNameLength });
   }
-  if (!NAME_REGEX.test(name)) return 'Solo se permiten letras y espacios.';
+  if (!NAME_REGEX.test(name)) return t('validation.lettersOnly');
   // Words of 2+ letters; short connectors like "de" or "la" also count
   const words = name.split(/\s+/).filter((word) => word.length >= 2);
-  if (words.length < RULES.minFullNameWords) {
-    return 'Escribe al menos un nombre y un apellido.';
-  }
+  if (words.length < RULES.minFullNameWords) return t('validation.fullNameWords');
   return null;
 }
 
-export function validateDocumentId(value) {
-  const requiredError = validateRequired(value);
+export function validateDocumentId(value, t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
   const documentId = value.trim();
-  if (!DIGITS_REGEX.test(documentId)) return 'Solo se permiten números.';
-  if (documentId.startsWith('0')) return 'No puede empezar por 0.';
+  if (!DIGITS_REGEX.test(documentId)) return t('validation.digitsOnly');
+  if (documentId.startsWith('0')) return t('validation.noLeadingZero');
   if (
     documentId.length < RULES.documentIdMinDigits ||
     documentId.length > RULES.documentIdMaxDigits
   ) {
-    return `Debe tener entre ${RULES.documentIdMinDigits} y ${RULES.documentIdMaxDigits} dígitos.`;
+    return t('validation.digitsRange', { min: RULES.documentIdMinDigits, max: RULES.documentIdMaxDigits });
   }
   return null;
 }
 
-export function validatePhone(value) {
-  const requiredError = validateRequired(value);
+export function validatePhone(value, t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
   const phone = value.trim();
-  if (!DIGITS_REGEX.test(phone)) return 'Solo se permiten números.';
-  if (phone.length !== RULES.phoneDigits) {
-    return `Debe tener exactamente ${RULES.phoneDigits} dígitos.`;
-  }
-  if (!phone.startsWith(RULES.phonePrefix)) {
-    return `El celular debe empezar por ${RULES.phonePrefix}.`;
-  }
+  if (!DIGITS_REGEX.test(phone)) return t('validation.digitsOnly');
+  if (phone.length !== RULES.phoneDigits) return t('validation.digitsExact', { count: RULES.phoneDigits });
+  if (!phone.startsWith(RULES.phonePrefix)) return t('validation.phonePrefix', { prefix: RULES.phonePrefix });
   return null;
 }
 
@@ -113,30 +107,26 @@ export function calculateAge(birthDate, today = new Date()) {
   return age;
 }
 
-export function validateBirthDate(value, today = new Date()) {
-  if (!isValidDate(value)) return 'Selecciona tu fecha de nacimiento.';
-  if (value > today) return 'La fecha no puede ser futura.';
+export function validateBirthDate(value, today = new Date(), t = defaultT) {
+  if (!isValidDate(value)) return t('validation.birthDateRequired');
+  if (value > today) return t('validation.futureDate');
   const age = calculateAge(value, today);
-  if (age < RULES.minDriverAge) return `Debes ser mayor de ${RULES.minDriverAge} años.`;
-  if (age > RULES.maxDriverAge) {
-    return `Revisa la fecha: la edad máxima es ${RULES.maxDriverAge} años.`;
-  }
+  if (age < RULES.minDriverAge) return t('validation.minAge', { min: RULES.minDriverAge });
+  if (age > RULES.maxDriverAge) return t('validation.maxAge', { max: RULES.maxDriverAge });
   return null;
 }
 
 // Passwords are not trimmed: spaces are valid characters
-export function validatePassword(value) {
-  if (!value) return REQUIRED_MESSAGE;
-  if (value.length < RULES.minPasswordLength) {
-    return `Mínimo ${RULES.minPasswordLength} caracteres.`;
-  }
-  if (!PASSWORD_REGEX.test(value)) return 'Debe incluir al menos una letra y un número.';
+export function validatePassword(value, t = defaultT) {
+  if (!value) return t('validation.required');
+  if (value.length < RULES.minPasswordLength) return t('validation.minLength', { min: RULES.minPasswordLength });
+  if (!PASSWORD_REGEX.test(value)) return t('validation.passwordMix');
   return null;
 }
 
-export function validatePasswordConfirmation(password, confirmation) {
-  if (!confirmation) return 'Confirma tu contraseña.';
-  if (password !== confirmation) return 'Las contraseñas no coinciden.';
+export function validatePasswordConfirmation(password, confirmation, t = defaultT) {
+  if (!confirmation) return t('validation.confirmPassword');
+  if (password !== confirmation) return t('validation.passwordMismatch');
   return null;
 }
 
@@ -147,74 +137,69 @@ export function normalizePlate(value) {
   return (value ?? '').replace(/[\s-]/g, '').toUpperCase();
 }
 
-export function validatePlate(value) {
+export function validatePlate(value, t = defaultT) {
   const plate = normalizePlate(value);
-  if (!plate) return REQUIRED_MESSAGE;
-  if (!PLATE_REGEX.test(plate)) {
-    return 'Formato inválido. Usa 3 letras y 3 números (ej. ABC123).';
-  }
+  if (!plate) return t('validation.required');
+  if (!PLATE_REGEX.test(plate)) return t('validation.plateFormat');
   return null;
 }
 
-export function validateYear(value, currentYear = new Date().getFullYear()) {
-  const requiredError = validateRequired(value);
+export function validateYear(value, currentYear = new Date().getFullYear(), t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
   const year = String(value).trim();
-  if (!YEAR_REGEX.test(year)) return 'Debe tener 4 dígitos (ej. 2020).';
+  if (!YEAR_REGEX.test(year)) return t('validation.yearFormat');
   const maxYear = currentYear + RULES.maxModelYearsAhead;
-  if (Number(year) > maxYear) return `No puede ser mayor a ${maxYear}.`;
+  if (Number(year) > maxYear) return t('validation.yearMax', { max: maxYear });
   return null;
 }
 
-export function validateCapacity(value, category) {
-  const requiredError = validateRequired(value);
+export function validateCapacity(value, category, t = defaultT) {
+  const requiredError = validateRequired(value, t);
   if (requiredError) return requiredError;
   const capacityText = String(value).trim();
-  if (!DIGITS_REGEX.test(capacityText)) return 'Solo se permiten números enteros.';
+  if (!DIGITS_REGEX.test(capacityText)) return t('validation.integerOnly');
   const capacity = Number(capacityText);
-  if (capacity < 1) return 'Debe ser al menos 1.';
+  if (capacity < 1) return t('validation.capacityMin');
 
   const range = CAPACITY_BY_CATEGORY[category];
   if (!range) {
     // No category selected yet: only the general maximum applies
-    return capacity > MAX_VEHICLE_CAPACITY ? `Máximo ${MAX_VEHICLE_CAPACITY} pasajeros.` : null;
+    return capacity > MAX_VEHICLE_CAPACITY ? t('validation.capacityMax', { max: MAX_VEHICLE_CAPACITY }) : null;
   }
-  const label = categoryLabel(category);
-  if (capacity < range.min) return `La categoría ${label} exige mínimo ${range.min} pasajeros.`;
-  if (capacity > range.max) return `La categoría ${label} permite máximo ${range.max} pasajeros.`;
+  const label = categoryLabel(category, t);
+  if (capacity < range.min) return t('validation.capacityCategoryMin', { category: label, min: range.min });
+  if (capacity > range.max) return t('validation.capacityCategoryMax', { category: label, max: range.max });
   return null;
 }
 
 // ---------- Whole tabs ----------
 
-export function validatePersonalData(data, today = new Date()) {
+export function validatePersonalData(data, today = new Date(), t = defaultT) {
   return {
-    profilePhoto: validatePhoto(data.profilePhoto, 'La foto de perfil es obligatoria.'),
-    fullName: validateFullName(data.fullName),
-    documentId: validateDocumentId(data.documentId),
-    phone: validatePhone(data.phone),
-    birthDate: validateBirthDate(data.birthDate, today),
-    gender: validateOption(data.gender, GENDER_OPTIONS, 'Selecciona un género.'),
-    email: validateEmail(data.email),
-    language: validateOption(data.language, LANGUAGE_OPTIONS, 'Selecciona un idioma.'),
-    password: validatePassword(data.password),
-    confirmPassword: validatePasswordConfirmation(data.password, data.confirmPassword),
+    profilePhoto: validatePhoto(data.profilePhoto, 'validation.profilePhoto', t),
+    fullName: validateFullName(data.fullName, t),
+    documentId: validateDocumentId(data.documentId, t),
+    phone: validatePhone(data.phone, t),
+    birthDate: validateBirthDate(data.birthDate, today, t),
+    gender: validateOption(data.gender, GENDER_OPTIONS, 'validation.gender', t),
+    email: validateEmail(data.email, t),
+    language: validateOption(data.language, LANGUAGE_OPTIONS, 'validation.language', t),
+    password: validatePassword(data.password, t),
+    confirmPassword: validatePasswordConfirmation(data.password, data.confirmPassword, t),
   };
 }
 
-export function validateVehicleData(data, currentYear = new Date().getFullYear()) {
+export function validateVehicleData(data, currentYear = new Date().getFullYear(), t = defaultT) {
   return {
-    category: validateOption(data.category, VEHICLE_CATEGORY_OPTIONS, 'Selecciona una categoría.'),
-    plate: validatePlate(data.plate),
-    brand: validateMaxLengthText(data.brand, RULES.maxBrandLength),
-    model: validateMaxLengthText(data.model, RULES.maxModelLength),
-    year: validateYear(data.year, currentYear),
-    color: validateOption(data.color, VEHICLE_COLOR_OPTIONS, 'Selecciona un color.'),
-    capacity: validateCapacity(data.capacity, data.category),
-    vehiclePhoto: validatePhoto(
-      data.vehiclePhoto,
-      'La foto del vehículo es obligatoria (debe verse la placa).',
-    ),
+    category: validateOption(data.category, VEHICLE_CATEGORY_OPTIONS, 'validation.category', t),
+    plate: validatePlate(data.plate, t),
+    brand: validateMaxLengthText(data.brand, RULES.maxBrandLength, t),
+    model: validateMaxLengthText(data.model, RULES.maxModelLength, t),
+    year: validateYear(data.year, currentYear, t),
+    color: validateOption(data.color, VEHICLE_COLOR_OPTIONS, 'validation.color', t),
+    capacity: validateCapacity(data.capacity, data.category, t),
+    vehiclePhoto: validatePhoto(data.vehiclePhoto, 'validation.vehiclePhoto', t),
   };
 }
 

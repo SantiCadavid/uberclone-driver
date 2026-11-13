@@ -1,21 +1,38 @@
-// AI-assisted: see docs/AI_LOG.md #6
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+// AI-assisted: see docs/AI_LOG.md #6, #20, #21, #22
+import { useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useLanguage } from '../../context/LanguageContext';
+import LanguageSelector from '../../components/common/LanguageSelector';
 import { getAuthErrorMessage, loginWithEmail } from '../../services/authService';
 import { validateEmail, validateRequired } from '../../utils/validators';
 import { colors } from '../../theme/colors';
 
 export default function LoginScreen({ navigation }) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef(null);
 
   const handleLogin = async () => {
+    if (loading) return; // Prevents a double submit (button or keyboard key)
+    Keyboard.dismiss();
     const newErrors = {
-      email: validateEmail(email),
-      password: validateRequired(password),
+      email: validateEmail(email, t),
+      password: validateRequired(password, t),
     };
     setErrors(newErrors);
     setSubmitError(null);
@@ -26,68 +43,92 @@ export default function LoginScreen({ navigation }) {
       await loginWithEmail(email, password);
       // No navigate() here: AuthContext detects the session and RootNavigator shows Home
     } catch (error) {
-      setSubmitError(getAuthErrorMessage(error));
+      setSubmitError(getAuthErrorMessage(error, t));
       setLoading(false);
     }
   };
 
+  const handleGoToRegister = () => {
+    Keyboard.dismiss();
+    navigation.navigate('Register');
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>UberClone Conductor</Text>
-      <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
-
-      <Text style={styles.label}>Correo electrónico</Text>
-      <TextInput
-        style={[styles.input, errors.email && styles.inputError]}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="nombre@dominio.com"
-        placeholderTextColor={colors.muted}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-
-      <Text style={styles.label}>Contraseña</Text>
-      <TextInput
-        style={[styles.input, errors.password && styles.inputError]}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Tu contraseña"
-        placeholderTextColor={colors.muted}
-        secureTextEntry
-        autoCapitalize="none"
-      />
-      {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-
-      <Pressable
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={loading}
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* "handled": taps on buttons work with the keyboard open; taps on empty space close it */}
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
-        {loading ? (
-          <ActivityIndicator color={colors.primaryText} />
-        ) : (
-          <Text style={styles.buttonText}>Iniciar sesión</Text>
-        )}
-      </Pressable>
-      {submitError && <Text style={styles.submitError}>{submitError}</Text>}
+        <View style={styles.languageBox}>
+          <LanguageSelector />
+        </View>
 
-      <Pressable style={styles.linkButton} onPress={() => navigation.navigate('Register')}>
-        <Text style={styles.linkText}>¿No tienes cuenta? Regístrate como conductor</Text>
-      </Pressable>
-    </View>
+        <Text style={styles.title}>{t('login.title')}</Text>
+        <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
+
+        <Text style={styles.label}>{t('login.email')}</Text>
+        <TextInput
+          style={[styles.input, errors.email && styles.inputError]}
+          value={email}
+          onChangeText={setEmail}
+          placeholder={t('login.emailPlaceholder')}
+          placeholderTextColor={colors.muted}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => passwordRef.current?.focus()}
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+        <Text style={styles.label}>{t('login.password')}</Text>
+        <TextInput
+          ref={passwordRef}
+          style={[styles.input, errors.password && styles.inputError]}
+          value={password}
+          onChangeText={setPassword}
+          placeholder={t('login.passwordPlaceholder')}
+          placeholderTextColor={colors.muted}
+          secureTextEntry
+          autoCapitalize="none"
+          returnKeyType="go"
+          onSubmitEditing={handleLogin}
+        />
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+        <Pressable
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.primaryText} />
+          ) : (
+            <Text style={styles.buttonText}>{t('login.submit')}</Text>
+          )}
+        </Pressable>
+        {submitError && <Text style={styles.submitError}>{submitError}</Text>}
+
+        <Pressable style={styles.linkButton} onPress={handleGoToRegister}>
+          <Text style={styles.linkText}>{t('login.register')}</Text>
+        </Pressable>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.background },
   container: {
-    flex: 1,
-    backgroundColor: colors.background,
+    flexGrow: 1, // keeps the form centered when there is room, scrollable when the keyboard is open
     justifyContent: 'center',
     padding: 24,
   },
+  languageBox: { marginBottom: 32 },
   title: { fontSize: 26, fontWeight: 'bold', color: colors.text, textAlign: 'center' },
   subtitle: {
     fontSize: 15,
