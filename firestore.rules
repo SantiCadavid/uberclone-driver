@@ -1,0 +1,81 @@
+rules_version = '2';
+// AI-assisted: see docs/AI_LOG.md #26
+// The backend uses the Admin SDK and is not affected by these rules: it is the only one
+// that can mark a trip as paid or change a driver's balance.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Trip states (section 3 of the guide) that the app itself may apply
+    function validTransition(from, to) {
+      return (from == 'requested' && to in ['accepted', 'rejected'])
+        || (from == 'accepted' && to in ['driver_arriving', 'cancelled'])
+        || (from == 'driver_arriving' && to in ['in_progress', 'cancelled'])
+        || (from == 'in_progress' && to == 'completed');
+    }
+
+    // Final amounts sent by finishTrip: whole numbers and consistent with each other
+    function validMoney(data) {
+      return data.fare is number && data.commission is number
+        && data.tip is number && data.driverEarnings is number
+        && data.fare > 0 && data.commission >= 0 && data.commission <= data.fare
+        && data.driverEarnings == data.fare - data.commission + data.tip;
+    }
+
+    match /drivers/{uid} {
+      allow read: if isOwner(uid);
+
+      // Sign-up: always pending, offline and without balance
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.approvalStatus == 'pending'
+        && request.resource.data.isAvailable == false
+        && !('balance' in request.resource.data);
+
+      // Only profile, language, availability and location. Never approvalStatus, balance or documents.
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['fullName', 'phone', 'gender', 'language', 'isAvailable', 'location', 'updatedAt'])
+        && (request.resource.data.isAvailable == false || resource.data.approvalStatus == 'approved');
+
+      allow delete: if false;
+    }
+
+    match /trips/{tripId} {
+      // Queries always filter by driverId, so they satisfy this rule
+      allow read: if signedIn() && resource.data.driverId == request.auth.uid;
+
+      // Passenger simulator: a new request for the signed-in driver, with no money set
+      allow create: if signedIn()
+        && request.resource.data.driverId == request.auth.uid
+        && request.resource.data.status == 'requested'
+        && request.resource.data.paymentStatus == null
+        && request.resource.data.fare == null;
+
+      // The app moves the trip through the allowed states; payment fields belong to the backend
+      allow update: if signedIn()
+        && resource.data.driverId == request.auth.uid
+        && request.resource.data.driverId == resource.data.driverId
+        && validTransition(resource.data.status, request.resource.data.status)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+             'paymentStatus', 'paymentId', 'paidAt', 'paymentUpdatedAt',
+             'paymentMethod', 'paymentMethodChangedFrom', 'commissionRate'
+           ])
+        && (
+             (request.resource.data.status == 'completed' && validMoney(request.resource.data))
+             || (request.resource.data.status != 'completed'
+                 && !request.resource.data.diff(resource.data).affectedKeys()
+                      .hasAny(['fare', 'commission', 'tip', 'driverEarnings']))
+           );
+
+      allow delete: if false;
+    }
+  }
+}

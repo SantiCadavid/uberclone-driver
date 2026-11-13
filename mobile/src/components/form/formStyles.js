@@ -1,14 +1,18 @@
-// AI-assisted: see docs/AI_LOG.md #8
+// AI-assisted: see docs/AI_LOG.md #8, #27
 import { StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { MIN_TOUCH, radius, space } from '../../theme/layout';
 
 export const formStyles = StyleSheet.create({
   input: {
-    borderWidth: 1,
+    minHeight: MIN_TOUCH,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    borderRadius: radius.control,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.text,
     backgroundColor: colors.background,
@@ -19,19 +23,19 @@ export const formStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  valueText: { fontSize: 16, color: colors.text },
-  placeholderText: { fontSize: 16, color: colors.muted },
+  valueText: { fontFamily: fonts.regular, fontSize: 16, color: colors.text },
+  placeholderText: { fontFamily: fonts.regular, fontSize: 16, color: colors.muted },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(35, 42, 51, 0.45)', // asphalt, translucent
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
-    paddingBottom: 32,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    padding: space.lg,
+    paddingBottom: space.xxl,
   },
-  sheetTitle: { fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 },
+  sheetTitle: { ...type.section, marginBottom: space.sm },
 });

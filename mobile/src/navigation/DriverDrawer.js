@@ -1,6 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #13, #14, #19, #21
+// AI-assisted: see docs/AI_LOG.md #13, #14, #19, #21, #29
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -15,8 +15,18 @@ import EarningsScreen from '../screens/earnings/EarningsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import PassengerSimulatorScreen from '../screens/simulator/PassengerSimulatorScreen';
 import { colors } from '../theme/colors';
+import { fonts, type } from '../theme/typography';
+import { MIN_TOUCH, radius, space } from '../theme/layout';
 
 const Drawer = createDrawerNavigator();
+
+const initials = (name) =>
+  (name ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join('');
 
 function DriverDrawerContent(props) {
   const { uid, driver } = useDriver();
@@ -35,6 +45,13 @@ function DriverDrawerContent(props) {
   return (
     <DrawerContentScrollView {...props}>
       <View style={styles.header}>
+        {driver?.profilePhotoUrl ? (
+          <Image source={{ uri: driver.profilePhotoUrl }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials(driver?.fullName)}</Text>
+          </View>
+        )}
         <Text style={styles.name}>{driver?.fullName ?? t('drawer.defaultName')}</Text>
         <Text style={styles.email}>{driver?.email}</Text>
       </View>
@@ -53,8 +70,13 @@ export default function DriverDrawer() {
     <Drawer.Navigator
       drawerContent={(props) => <DriverDrawerContent {...props} />}
       screenOptions={{
-        drawerActiveTintColor: colors.primary,
         headerTintColor: colors.text,
+        headerTitleStyle: { fontFamily: fonts.semibold, fontSize: 17, color: colors.text },
+        drawerActiveTintColor: colors.text,
+        drawerInactiveTintColor: colors.muted,
+        drawerActiveBackgroundColor: colors.surface,
+        drawerLabelStyle: { fontFamily: fonts.medium, fontSize: 16 },
+        drawerItemStyle: { borderRadius: radius.control },
       }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} options={{ title: t('drawer.home') }} />
@@ -72,15 +94,25 @@ export default function DriverDrawer() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    marginBottom: 8,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.lg,
+    marginBottom: space.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  name: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  email: { fontSize: 14, color: colors.muted, marginTop: 2 },
-  logout: { marginTop: 16, marginHorizontal: 16, paddingVertical: 12 },
-  logoutText: { fontSize: 15, fontWeight: '600', color: colors.error },
-  error: { color: colors.error, marginHorizontal: 16 },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.md,
+  },
+  avatarText: { fontFamily: fonts.bold, fontSize: 20, color: colors.primaryText },
+  name: type.section,
+  email: { ...type.caption, marginTop: 2 },
+  logout: { marginTop: space.lg, marginHorizontal: space.lg, minHeight: MIN_TOUCH, justifyContent: 'center' },
+  logoutText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.error },
+  error: { ...type.caption, color: colors.error, marginHorizontal: space.lg },
 });

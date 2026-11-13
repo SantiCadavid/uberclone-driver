@@ -1,9 +1,17 @@
-// AI-assisted: see docs/AI_LOG.md #15, #23
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+// AI-assisted: see docs/AI_LOG.md #15, #23, #28
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useLanguage } from '../../context/LanguageContext';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import Button from '../common/Button';
 import { TRIP_CONFIG } from '../../config/trip';
 import { categoryLabel, formatCop, paymentMethodLabel } from '../../utils/format';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
+
+const TOTAL_MS = TRIP_CONFIG.requestTimeoutSeconds * 1000;
+const URGENT_SECONDS = 5;
 
 function Detail({ label, value, highlight }) {
   return (
@@ -16,18 +24,57 @@ function Detail({ label, value, highlight }) {
 
 export default function TripRequestCard({ request, secondsLeft, processing, onAccept, onReject }) {
   const { t } = useLanguage();
-  const progress = Math.max(0, secondsLeft / TRIP_CONFIG.requestTimeoutSeconds);
-  const urgent = secondsLeft <= 5;
+  const reduceMotion = useReducedMotion();
+  const entrance = useRef(new Animated.Value(0)).current; // 0 below the screen -> 1 in place
+  const timeLeft = useRef(new Animated.Value(1)).current; // 1 full bar -> 0 empty
+  const urgent = secondsLeft <= URGENT_SECONDS;
+
+  // Entrance: the most important moment of the app, so it is the main animation
+  useEffect(() => {
+    if (reduceMotion) {
+      entrance.setValue(1);
+      return undefined;
+    }
+    entrance.setValue(0);
+    const animation = Animated.spring(entrance, { toValue: 1, damping: 18, stiffness: 170, useNativeDriver: true });
+    animation.start();
+    // Cleanup: stop the animation if the request disappears before it ends
+    return () => animation.stop();
+  }, [request.id, reduceMotion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Continuous timer bar, measured from the request's creation time (same deadline as the hook)
+  useEffect(() => {
+    const startedAt = request.createdAt?.toMillis?.() ?? Date.now();
+    const remaining = Math.max(0, startedAt + TOTAL_MS - Date.now());
+    timeLeft.setValue(remaining / TOTAL_MS);
+    if (reduceMotion || remaining === 0) return undefined;
+    const animation = Animated.timing(timeLeft, {
+      toValue: 0,
+      duration: remaining,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    });
+    animation.start();
+    // Cleanup: stop the bar when the request is answered or replaced
+    return () => animation.stop();
+  }, [request.id, reduceMotion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // With reduced motion the bar follows the seconds instead of moving continuously
+  useEffect(() => {
+    if (reduceMotion) timeLeft.setValue(Math.max(0, secondsLeft / TRIP_CONFIG.requestTimeoutSeconds));
+  }, [secondsLeft, reduceMotion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const translateY = entrance.interpolate({ inputRange: [0, 1], outputRange: [320, 0] });
 
   return (
-    <View style={styles.card}>
+    <Animated.View style={[styles.card, { opacity: entrance, transform: [{ translateY }] }]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>{t('request.title')}</Text>
         <Text style={[styles.timer, urgent && styles.timerUrgent]}>{secondsLeft}s</Text>
       </View>
       <View style={styles.progressTrack}>
-        <View
-          style={[styles.progressFill, urgent && styles.progressUrgent, { width: `${progress * 100}%` }]}
+        <Animated.View
+          style={[styles.progressFill, urgent && styles.progressUrgent, { transform: [{ scaleX: timeLeft }] }]}
         />
       </View>
 
@@ -53,70 +100,63 @@ export default function TripRequestCard({ request, secondsLeft, processing, onAc
       </View>
 
       <View style={styles.buttons}>
-        <Pressable
-          style={[styles.button, styles.rejectButton]}
+        <Button
+          label={t('request.reject')}
+          variant="secondary"
           onPress={onReject}
           disabled={processing}
-        >
-          <Text style={styles.rejectText}>{t('request.reject')}</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, styles.acceptButton, processing && styles.disabled]}
+          style={styles.buttonLeft}
+        />
+        {/* The signal yellow marks the one action that matters most */}
+        <Button
+          label={t('request.accept')}
+          variant="signal"
           onPress={onAccept}
-          disabled={processing}
-        >
-          {processing ? (
-            <ActivityIndicator color={colors.primaryText} />
-          ) : (
-            <Text style={styles.acceptText}>{t('request.accept')}</Text>
-          )}
-        </Pressable>
+          loading={processing}
+          style={styles.buttonRight}
+        />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 32,
+    left: space.md,
+    right: space.md,
+    bottom: space.xl,
     backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 6,
+    borderRadius: radius.sheet,
+    padding: space.lg,
+    shadowColor: colors.text,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-  timer: { fontSize: 22, fontWeight: 'bold', color: colors.text },
+  title: type.cardTitle,
+  timer: { fontFamily: fonts.bold, fontSize: 26, color: colors.text, fontVariant: ['tabular-nums'] },
   timerUrgent: { color: colors.error },
   progressTrack: {
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: 3,
-    marginTop: 8,
+    height: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 4,
+    marginTop: space.sm,
     overflow: 'hidden',
   },
-  progressFill: { height: 6, backgroundColor: colors.primary },
+  progressFill: { height: 8, backgroundColor: colors.signal, transformOrigin: 'left' },
   progressUrgent: { backgroundColor: colors.error },
-  passenger: { fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 12 },
-  place: { fontSize: 14, color: colors.text, marginTop: 4 },
-  placeLabel: { fontWeight: '600' },
-  detailsRow: { flexDirection: 'row', marginTop: 12 },
+  passenger: { ...type.section, marginTop: space.md },
+  place: { ...type.body, marginTop: space.xs },
+  placeLabel: { fontFamily: fonts.semibold },
+  detailsRow: { flexDirection: 'row', marginTop: space.md },
   detail: { flex: 1 },
-  detailLabel: { fontSize: 12, color: colors.muted },
-  detailValue: { fontSize: 15, fontWeight: '600', color: colors.text, marginTop: 2 },
+  detailLabel: type.caption,
+  detailValue: { ...type.money, fontSize: 16, marginTop: 2 },
   highlight: { color: colors.success },
-  buttons: { flexDirection: 'row', marginTop: 16 },
-  button: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  rejectButton: { borderWidth: 1, borderColor: colors.border, marginRight: 8 },
-  acceptButton: { backgroundColor: colors.primary, marginLeft: 8 },
-  disabled: { opacity: 0.6 },
-  rejectText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  acceptText: { fontSize: 16, fontWeight: '600', color: colors.primaryText },
+  buttons: { flexDirection: 'row', marginTop: space.lg },
+  buttonLeft: { flex: 1, marginRight: space.sm },
+  buttonRight: { flex: 1, marginLeft: space.sm },
 });

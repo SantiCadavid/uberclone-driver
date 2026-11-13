@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #17
+// AI-assisted: see docs/AI_LOG.md #17, #26
 import { db, FieldValue } from './firebaseAdmin.js';
 import { HttpError } from './errors.js';
 import { findLatestPaymentForTrip } from './mercadoPago.js';
@@ -71,4 +71,52 @@ export async function verifyTripPayment(tripId) {
   if (!payment) return { paymentStatus: 'pending', found: false };
   const result = await applyPaymentResult(tripId, payment);
   return { ...result, found: true };
+}
+
+// Same rule as the app's getCollectionActions: cash when nothing was charged yet,
+// or as an alternative after a rejected card payment (never while a card payment is pending)
+function canCollectInCash(trip) {
+  if (trip.paymentMethod === 'cash') return trip.paymentStatus == null;
+  if (trip.paymentMethod === 'mercadopago') return trip.paymentStatus === 'rejected';
+  return false;
+}
+
+// Cash collected by the driver: the trip becomes paid and the platform commission
+// is taken from the driver's balance (it may go negative). Only the server moves money.
+export async function applyCashPayment(tripId, uid) {
+  const tripRef = db.collection('trips').doc(tripId);
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(tripRef);
+    if (!snapshot.exists) throw new HttpError(404, 'trip-not-found');
+    const trip = snapshot.data();
+
+    if (trip.driverId !== uid) throw new HttpError(403, 'trip-not-yours');
+    // Idempotent: a double tap or a retry after a timeout never charges the commission twice
+    if (trip.status === 'paid' && trip.paymentStatus === 'cash') {
+      return { paymentStatus: 'cash', alreadyPaid: true };
+    }
+    if (trip.status === 'paid') throw new HttpError(409, 'cash-not-allowed');
+    if (trip.status !== 'completed') throw new HttpError(409, 'trip-not-completed');
+    if (!canCollectInCash(trip)) throw new HttpError(409, 'cash-not-allowed');
+    if (!Number.isInteger(trip.commission)) throw new HttpError(409, 'trip-invalid-amounts');
+
+    const now = FieldValue.serverTimestamp();
+    const changes = {
+      status: 'paid',
+      paymentStatus: 'cash',
+      paymentMethod: 'cash',
+      paidAt: now,
+      paymentUpdatedAt: now,
+    };
+    // Keeps track of a card payment that was rejected and then collected in cash
+    if (trip.paymentMethod !== 'cash') changes.paymentMethodChangedFrom = trip.paymentMethod;
+
+    transaction.update(tripRef, changes);
+    transaction.update(db.collection('drivers').doc(uid), {
+      balance: FieldValue.increment(-trip.commission),
+      updatedAt: now,
+    });
+    return { paymentStatus: 'cash' };
+  });
 }

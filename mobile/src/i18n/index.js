@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #21, #22, #23, #24, #25
+// AI-assisted: see docs/AI_LOG.md #21, #22, #23, #24, #25, #29
 import es from './es';
 import en from './en';
 import esRegistration from './es.registration';
@@ -9,14 +9,16 @@ import esHistory from './es.history';
 import enHistory from './en.history';
 import esUpload from './es.upload';
 import enUpload from './en.upload';
+import esDesign from './es.design';
+import enDesign from './en.design';
 
 export const SUPPORTED_LANGUAGES = ['es', 'en'];
 export const DEFAULT_LANGUAGE = 'es';
 
 // One dictionary per language, merged from one file per area (a test checks both have the same keys)
 export const TRANSLATIONS = {
-  es: { ...es, ...esRegistration, ...esTrip, ...esHistory, ...esUpload },
-  en: { ...en, ...enRegistration, ...enTrip, ...enHistory, ...enUpload },
+  es: { ...es, ...esRegistration, ...esTrip, ...esHistory, ...esUpload, ...esDesign },
+  en: { ...en, ...enRegistration, ...enTrip, ...enHistory, ...enUpload, ...enDesign },
 };
 
 // Locale used by date pickers and date formatting

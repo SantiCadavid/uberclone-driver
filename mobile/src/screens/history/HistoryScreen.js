@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #19, #24
+// AI-assisted: see docs/AI_LOG.md #19, #24, #29
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -7,20 +7,25 @@ import { useDriver } from '../../context/DriverContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTripHistory } from '../../hooks/useTripHistory';
 import SegmentedControl from '../../components/common/SegmentedControl';
+import Skeleton from '../../components/common/Skeleton';
+import EmptyState from '../../components/common/EmptyState';
 import TripHistoryItem from '../../components/trip/TripHistoryItem';
 import TripDetailModal from '../../components/trip/TripDetailModal';
 import { PAYMENT_FILTER_OPTIONS, PERIODS, PERIOD_OPTIONS } from '../../config/history';
 import { translateOptions } from '../../i18n';
 import { formatDate, getPeriodRange, startOfMonth, validateDateRange } from '../../utils/dates';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 // Date field: compact picker on iOS, button + dialog on Android. Error under the field.
 function DateInput({ label, value, onChange, error, locale }) {
   const [open, setOpen] = useState(false);
 
-  const handleChange = (event, selected) => {
+  // onValueChange: a date was chosen (the date is always defined); onDismiss: closed without choosing
+  const handleValue = (event, selected) => {
     if (Platform.OS === 'android') setOpen(false);
-    if (selected && event.type !== 'dismissed') onChange(selected);
+    onChange(selected);
   };
 
   return (
@@ -32,7 +37,7 @@ function DateInput({ label, value, onChange, error, locale }) {
           mode="date"
           display="compact"
           maximumDate={new Date()}
-          onChange={handleChange}
+          onValueChange={handleValue}
           themeVariant="light"
           locale={locale}
         />
@@ -41,7 +46,15 @@ function DateInput({ label, value, onChange, error, locale }) {
           <Pressable style={styles.dateButton} onPress={() => setOpen(true)}>
             <Text style={styles.dateButtonText}>{formatDate(value)}</Text>
           </Pressable>
-          {open && <DateTimePicker value={value} mode="date" maximumDate={new Date()} onChange={handleChange} />}
+          {open && (
+            <DateTimePicker
+              value={value}
+              mode="date"
+              maximumDate={new Date()}
+              onValueChange={handleValue}
+              onDismiss={() => setOpen(false)}
+            />
+          )}
         </>
       )}
       {error && <Text style={styles.fieldError}>{error}</Text>}
@@ -49,7 +62,29 @@ function DateInput({ label, value, onChange, error, locale }) {
   );
 }
 
-export default function HistoryScreen() {
+// Same shape as TripHistoryItem, so the screen does not jump when the trips arrive
+function HistorySkeleton() {
+  return (
+    <View>
+      {[0, 1, 2, 3, 4].map((index) => (
+        <View key={index} style={styles.skeletonRow}>
+          <View style={styles.skeletonHeader}>
+            <Skeleton width={120} height={12} />
+            <Skeleton width={60} height={12} />
+          </View>
+          <Skeleton height={14} style={styles.skeletonGap} />
+          <Skeleton width="70%" height={14} style={styles.skeletonGapSmall} />
+          <View style={styles.skeletonHeader}>
+            <Skeleton width={140} height={12} style={styles.skeletonGap} />
+            <Skeleton width={70} height={18} style={styles.skeletonGap} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export default function HistoryScreen({ navigation }) {
   const { uid } = useDriver();
   const { t, locale } = useLanguage();
   const [period, setPeriod] = useState(PERIODS.week);
@@ -86,10 +121,17 @@ export default function HistoryScreen() {
   const renderItem = useCallback(({ item }) => <TripHistoryItem trip={item} onPress={handleSelect} />, [handleSelect]);
 
   const renderEmpty = () => {
-    if (loading) return <ActivityIndicator style={styles.emptySpinner} size="large" color={colors.primary} />;
-    if (error) return <Text style={[styles.empty, styles.errorText]}>{t(error)}</Text>;
-    if (!range) return <Text style={styles.empty}>{t('history.fixRange')}</Text>;
-    return <Text style={styles.empty}>{t('history.empty')}</Text>;
+    if (loading) return <HistorySkeleton />;
+        if (error) return <EmptyState title={t(error)} />;
+    if (!range) return <EmptyState title={t('history.fixRange')} />;
+    return (
+      <EmptyState
+        title={t('history.empty')}
+        message={t('empty.history.message')}
+        actionLabel={t('empty.goHome')}
+        onAction={() => navigation.navigate('Home')}
+      />
+    );
   };
 
   const renderFooter = () => {
@@ -134,8 +176,10 @@ export default function HistoryScreen() {
         onEndReachedThreshold={0.3}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
-        refreshControl={<RefreshControl refreshing={loading && trips.length > 0} onRefresh={reload} />}
-        contentContainerStyle={trips.length === 0 && styles.emptyContainer}
+        refreshControl={
+          <RefreshControl refreshing={loading && trips.length > 0} onRefresh={reload} tintColor={colors.primary} />
+        }
+        contentContainerStyle={trips.length === 0 && !loading && styles.emptyContainer}
       />
 
       <TripDetailModal trip={selectedTrip} onClose={handleCloseDetail} />
@@ -145,18 +189,20 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  filters: { padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
-  dates: { flexDirection: 'row', marginTop: 12 },
-  dateField: { flex: 1, marginRight: 8 },
-  dateLabel: { fontSize: 13, color: colors.muted, marginBottom: 4 },
-  dateButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10 },
-  dateButtonText: { fontSize: 15, color: colors.text },
-  fieldError: { fontSize: 13, color: colors.error, marginTop: 4 },
-  paymentFilter: { marginTop: 12 },
+  filters: { padding: space.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
+  dates: { flexDirection: 'row', marginTop: space.md },
+  dateField: { flex: 1, marginRight: space.sm },
+  dateLabel: { ...type.caption, marginBottom: space.xs },
+  dateButton: { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.control, padding: space.md },
+  dateButtonText: { fontFamily: fonts.regular, fontSize: 15, color: colors.text },
+  fieldError: { ...type.caption, color: colors.error, marginTop: space.xs },
+  paymentFilter: { marginTop: space.md },
   emptyContainer: { flexGrow: 1, justifyContent: 'center' },
-  emptySpinner: { marginTop: 40 },
-  empty: { fontSize: 15, color: colors.muted, textAlign: 'center', padding: 24 },
+  skeletonRow: { paddingVertical: space.md, paddingHorizontal: space.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
+  skeletonHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  skeletonGap: { marginTop: space.sm },
+  skeletonGapSmall: { marginTop: space.xs },
   errorText: { color: colors.error },
-  footer: { marginVertical: 16 },
-  footerText: { fontSize: 13, color: colors.muted, textAlign: 'center', marginVertical: 16 },
+  footer: { marginVertical: space.lg },
+  footerText: { ...type.caption, textAlign: 'center', marginVertical: space.lg },
 });

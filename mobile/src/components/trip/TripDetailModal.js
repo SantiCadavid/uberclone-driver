@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #19, #24
+// AI-assisted: see docs/AI_LOG.md #19, #24, #29
 import { useCallback, useRef } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -7,6 +7,8 @@ import { categoryLabel, formatCop, paymentMethodLabel } from '../../utils/format
 import { formatDateTime } from '../../utils/dates';
 import { getPaymentStatusInfo } from '../../utils/paymentStatus';
 import { colors, toneColors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { space } from '../../theme/layout';
 
 const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
 
@@ -42,7 +44,7 @@ export default function TripDetailModal({ trip, onClose }) {
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.title}>{t('detail.title')}</Text>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Pressable onPress={onClose} hitSlop={12} style={styles.closeButton}>
               <Text style={styles.close}>{t('detail.close')}</Text>
             </Pressable>
           </View>
@@ -57,7 +59,7 @@ export default function TripDetailModal({ trip, onClose }) {
               <Marker coordinate={toLatLng(trip.origin)} title={t('detail.originMarker')} pinColor="green" />
               <Marker coordinate={toLatLng(trip.destination)} title={t('detail.destinationMarker')} pinColor="red" />
               {trip.routePath?.length > 1 && (
-                <Polyline coordinates={trip.routePath} strokeWidth={4} strokeColor={colors.primary} />
+                <Polyline coordinates={trip.routePath} strokeWidth={5} strokeColor={colors.primary} />
               )}
             </MapView>
           ) : (
@@ -74,6 +76,7 @@ export default function TripDetailModal({ trip, onClose }) {
             <DetailRow label={t('detail.category')} value={categoryLabel(trip.category, t)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(trip.paymentMethod, t)} />
             <DetailRow label={t('detail.paymentStatus')} value={payment.label} valueColor={toneColors[payment.tone]} strong />
+            <View style={styles.divider} />
             <DetailRow label={t('detail.fare')} value={formatCop(trip.fare)} />
             <DetailRow
               label={t('detail.commission', {
@@ -96,15 +99,23 @@ export default function TripDetailModal({ trip, onClose }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  title: { fontSize: 20, fontWeight: 'bold', color: colors.text },
-  close: { fontSize: 16, fontWeight: '600', color: colors.text },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: space.lg },
+  title: type.cardTitle,
+  closeButton: { minHeight: 44, justifyContent: 'center' },
+  close: { fontFamily: fonts.semibold, fontSize: 16, color: colors.text },
   map: { height: 260 },
-  noMap: { fontSize: 14, color: colors.muted, paddingHorizontal: 16 },
-  details: { padding: 16, paddingBottom: 40 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  label: { fontSize: 15, color: colors.muted },
-  value: { fontSize: 15, color: colors.text, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
-  strong: { fontWeight: 'bold' },
-  address: { fontSize: 15, color: colors.text, marginTop: 10 },
+  noMap: { ...type.caption, paddingHorizontal: space.lg },
+  details: { padding: space.lg, paddingBottom: space.xxl + space.lg },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: space.md },
+  label: { ...type.body, color: colors.muted },
+  value: {
+    ...type.body,
+    fontVariant: ['tabular-nums'],
+    flexShrink: 1,
+    textAlign: 'right',
+    marginLeft: space.md,
+  },
+  strong: { fontFamily: fonts.bold },
+  address: { ...type.body, marginTop: space.md },
+  divider: { height: 1, backgroundColor: colors.border, marginTop: space.lg },
 });

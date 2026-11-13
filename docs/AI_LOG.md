@@ -331,3 +331,67 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/i18n/es.history.js, mobile/src/i18n/en.history.js, mobile/src/i18n/index.js, mobile/src/utils/__tests__/history.en.test.js, mobile/src/config/history.js, mobile/src/utils/dates.js, mobile/src/services/historyService.js, mobile/src/hooks/useEarnings.js, mobile/src/hooks/useTripHistory.js, mobile/src/components/trip/TripHistoryItem.js, mobile/src/components/trip/TripDetailModal.js, mobile/src/screens/history/HistoryScreen.js, mobile/src/screens/earnings/EarningsScreen.js — [b0c19ef]
 - Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 15 suites y 129 pruebas; historial, detalle y ganancias en inglés con AM/PM; error del rango de fechas en inglés debajo del campo; mensaje vacío en inglés; cambio de idioma aplicado a toda la app; comando de revisión final sin textos de interfaz pendientes.
 - Aprendizaje: Entendí cómo organizar un diccionario por áreas sin perder la garantía de que ambos idiomas estén completos, gracias a una prueba automática. También entendí que la traducción incluye formatos (la hora) y no solo textos. Haría distinto: crear el diccionario y la prueba de claves al inicio del proyecto para no tener que migrar pantallas después.
+
+### Entrada #25
+- Fecha: 2026-11-12
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Subir las fotos del registro (perfil, vehículo, licencia, SOAT y revisión técnico-mecánica) a Cloudinary y guardar sus URLs en el perfil del conductor (paso 21).
+- Prompt: "Integrar Cloudinary con un preset sin firma (solo nombre de la nube y preset, como variables públicas) para subir en paralelo las fotos del registro con timeout, progreso visible y errores traducidos. El orden debe ser: crear la cuenta en Auth, subir las fotos y guardar el perfil, borrando la cuenta si algo falla. buildDriverDocument recibe las URLs como parámetro opcional sin romper sus pruebas, las funciones auxiliares deben ser puras y probadas, y el Perfil debe mostrar la foto de perfil y la del vehículo."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se crearon la configuración de Cloudinary, uploadService (subida multipart con AbortController y subida paralela con progreso), las funciones puras getImageFileInfo y collectRegistrationPhotos (4 pruebas) y los diccionarios de subida. buildDriverDocument recibe photoUrls (2 pruebas), registerDriver sube las fotos entre la creación de la cuenta y el guardado con rollback, DocumentsScreen muestra el progreso y ProfileScreen las fotos.
+- Qué se usó / modificó / descartó:
+  - Usado: preset sin firma con carpeta fija y sin identificación pública, Promise.all para subir en paralelo, AbortController para el timeout y aceptación solo de URLs https.
+  - Modificado: el orden del registro (cuenta → fotos → perfil) y getRegistrationErrorMessage, que traduce los errores de subida.
+  - Descartado: Firebase Storage (puede exigir plan Blaze), subir las fotos antes de crear la cuenta (dejaría imágenes huérfanas si el correo ya existe) y subidas firmadas desde el backend (mejor práctica para documentos reales, documentada como mejora futura).
+- Archivos y commit: mobile/src/config/cloudinary.js, mobile/src/services/uploadService.js, mobile/src/utils/uploadHelpers.js, mobile/src/utils/__tests__/uploadHelpers.test.js, mobile/src/utils/__tests__/driverDocument.photos.test.js, mobile/src/i18n/es.upload.js, mobile/src/i18n/en.upload.js, mobile/src/i18n/index.js, mobile/src/utils/driverDocument.js, mobile/src/services/driverService.js, mobile/src/screens/register/DocumentsScreen.js, mobile/src/screens/profile/ProfileScreen.js, mobile/.env.example — [7d63252]
+- Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 17 suites y 135 pruebas; registro con progreso de subida, 5 imágenes en la carpeta uberclone-driver de Cloudinary y URLs https en Firestore; fotos visibles en el Perfil; modo avión y preset inválido con mensaje claro y sin cuenta a medias en Firebase Auth.
+- Aprendizaje: Entendí la diferencia entre subidas firmadas y sin firma, qué datos son públicos por diseño y cómo mitigar sus riesgos desde la configuración del preset. También entendí cómo ordenar operaciones en varios servicios para poder deshacerlas si una falla. Haría distinto: para documentos reales, subirlos desde el backend con firma y entrega autenticada.
+
+### Entrada #26
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Reemplazar el modo de prueba de Firestore por reglas de seguridad y mover el cobro en efectivo al backend (paso 22).
+- Prompt: "Escribir reglas de Firestore para drivers y trips: cada conductor solo lee y modifica lo suyo; el registro siempre queda pendiente y sin saldo; el perfil solo cambia campos permitidos y Disponible exige cuenta aprobada; los viajes solo siguen las transiciones de estado de la guía, con montos coherentes al finalizar, y el cliente nunca puede tocar los campos de pago ni marcar un viaje como pagado. Mover el cobro en efectivo a un endpoint del backend con transacción idempotente que descuente la comisión del saldo, y ajustar la app para usarlo."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó firestore.rules con funciones validTransition y validMoney, reglas de creación y actualización restringidas para drivers y trips, y borrado bloqueado. En el backend se agregó applyCashPayment (transacción idempotente con las mismas condiciones que la app) y el endpoint POST /payments/cash. La app llama a ese endpoint y se eliminó la transacción del cliente.
+- Qué se usó / modificó / descartó:
+  - Usado: affectedKeys().hasOnly/hasAny para limitar campos, funciones de reglas para estados y montos, Admin SDK en el backend para todo lo que mueve dinero.
+  - Modificado: registerCashPayment pasa a postToBackend; useTripPayment ya no recibe driverId.
+  - Descartado: dejar el efectivo en la app con una regla que validara el saldo contra el viaje (compleja y difícil de probar) y calcular la tarifa final en el servidor (mejora documentada).
+- Archivos y commit: firestore.rules, backend/src/payments.js, backend/src/server.js, mobile/src/services/paymentService.js, mobile/src/hooks/useTripPayment.js, mobile/src/screens/trip/ActiveTripScreen.js — [6d0e3ea]
+- Verificación: [COMPLETAR TRAS LAS PRUEBAS] reglas publicadas sin errores; flujo completo (registro, disponibilidad, solicitud, viaje, efectivo y tarjeta, historial, ganancias, perfil e idioma) sin errores de permisos; efectivo registrado por el backend con saldo descontado; endpoint sin token rechazado con 401; denegaciones en la zona de pruebas para leer otro conductor, cambiar approvalStatus o balance y marcar un viaje como pagado.
+- Aprendizaje: Entendí que las reglas de seguridad son la verdadera barrera, porque cualquier cliente puede saltarse la interfaz, y que conviene que solo el servidor mueva dinero para que las reglas sean simples. También entendí que el Admin SDK no pasa por las reglas. Haría distinto: escribir las reglas desde el inicio del proyecto y probar cada pantalla con ellas activas.
+
+### Entrada #27
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Definir y aplicar la identidad visual de la app (estética E1): paleta, tipografía, espaciados, botón común, formularios, Login y registro.
+- Prompt: "Proponer y aplicar una identidad visual acorde a una app de movilidad para conductores en Colombia, legible de un vistazo: paleta 'Asfalto y señal' (asfalto, blanco de carril y amarillo de señal usado con moderación), tipografía Barlow con una escala única, tokens de espaciado y radios, un componente Button común con altura mínima de toque, y aplicar todo a los componentes de formulario, el Login y las tres pestañas del registro sin cambiar la lógica."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se actualizó theme/colors.js conservando los nombres de colores (toda la app cambia de paleta), se crearon theme/typography.js (Barlow y escala 28/20/17/15/13), theme/layout.js (espacios, radios y toque mínimo) y Button. Las fuentes se cargan con useFonts en RootNavigator. Se rediseñaron los componentes de formulario, el selector de idioma, el Login (marca de líneas de carril) y el registro (pestañas numeradas y progreso de subida dentro del botón).
+- Qué se usó / modificó / descartó:
+  - Usado: expo-font y @expo-google-fonts/barlow (instalados con npx expo install), fontFamily por peso, números tabulares para el dinero, radios según jerarquía.
+  - Modificado: los botones de las pantallas del registro y el Login pasaron al componente Button; el progreso de subida se muestra dentro del botón.
+  - Descartado: la dirección monocroma (muy parecida a Uber), animaciones de entrada en cada tarjeta (distraen) y defaultProps globales para la fuente (no funcionan en React 19).
+- Archivos y commit: mobile/src/theme/colors.js, mobile/src/theme/typography.js, mobile/src/theme/layout.js, mobile/src/components/common/Button.js, mobile/src/components/common/SegmentedControl.js, mobile/src/components/common/LanguageSelector.js, mobile/src/components/form/formStyles.js, mobile/src/components/form/FormField.js, mobile/src/components/form/SelectField.js, mobile/src/components/form/DateField.js, mobile/src/components/form/PhotoField.js, mobile/src/components/form/CheckboxField.js, mobile/src/components/form/TabStatus.js, mobile/src/navigation/RootNavigator.js, mobile/src/navigation/RegisterTabs.js, mobile/src/screens/auth/LoginScreen.js, mobile/src/screens/register/PersonalDataScreen.js, mobile/src/screens/register/VehicleScreen.js, mobile/src/screens/register/DocumentsScreen.js, mobile/package.json — [fe6573a]
+- Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 17 suites y 135 pruebas; Barlow cargada; Login, registro y formularios con la nueva identidad; pestañas numeradas; progreso de subida dentro del botón; sin cambios de comportamiento.
+- Aprendizaje: Entendí cómo un sistema de tokens (colores, tipografía, espacios) permite cambiar la apariencia de toda la app desde un solo lugar, y por qué una identidad visual debe salir del tema del producto y no de una plantilla. Haría distinto: crear los tokens y el componente Button al inicio del proyecto.
+
+### Entrada #28
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Aplicar la identidad visual y las animaciones clave a Inicio, la solicitud entrante, el viaje, el cobro y el simulador (estética E2).
+- Prompt: "Aplicar el sistema visual 'Asfalto y señal' a Inicio, la tarjeta de solicitud, la pantalla del viaje y el simulador, con pocas animaciones y cada una con propósito: la solicitud entrante sube desde abajo y su temporizador se vacía de forma continua y sincronizada con el límite real; la franja amarilla de Disponible aparece al cambiar el estado; el cobro confirmado muestra una marca animada. Usar la API Animated con el driver nativo, detener cada animación en la limpieza del useEffect y respetar el ajuste de reducir movimiento con un hook personalizado."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se creó el hook useReducedMotion (AccessibilityInfo con suscripción y limpieza). TripRequestCard entra con un resorte y su barra se anima con scaleX desde el tiempo restante calculado con createdAt; HomeScreen muestra la franja amarilla animada al estar Disponible; ActiveTripScreen usa Button, ruta punteada a la recogida y una marca animada al cobrar; el simulador se rediseñó con los componentes comunes.
+- Qué se usó / modificó / descartó:
+  - Usado: Animated con useNativeDriver, transformOrigin para encoger la barra hacia la izquierda, lineDashPattern en la Polyline, AccessibilityInfo para reducir movimiento.
+  - Modificado: los botones de la solicitud, el viaje y el cobro pasaron al componente Button; Aceptar usa el amarillo señal.
+  - Descartado: Reanimated (no hacía falta y evita tocar versiones), animaciones de entrada en cada tarjeta o fila (distraen) y animar colores con el driver nativo (no lo admite; el cambio a rojo urgente es un cambio de estilo).
+- Archivos y commit: mobile/src/hooks/useReducedMotion.js, mobile/src/components/trip/TripRequestCard.js, mobile/src/screens/home/HomeScreen.js, mobile/src/screens/trip/ActiveTripScreen.js, mobile/src/screens/simulator/PassengerSimulatorScreen.js — [28a3692]
+- Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 17 suites y 135 pruebas; franja animada al cambiar la disponibilidad; tarjeta de solicitud con entrada y barra continua, en rojo los últimos 5 segundos; ruta punteada a la recogida y continua en el viaje; marca animada al cobrar; con reducir movimiento todo aparece sin animación.
+- Aprendizaje: Entendí que el movimiento debe responder a algo importante y no decorar, que el driver nativo hace las animaciones fluidas pero solo admite transform y opacity, y que cada animación iniciada en un useEffect también debe detenerse en su limpieza. Haría distinto: definir desde el inicio qué momentos de la app merecen animación.

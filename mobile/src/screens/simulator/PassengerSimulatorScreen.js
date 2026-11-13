@@ -1,11 +1,14 @@
-// AI-assisted: see docs/AI_LOG.md #14, #23
+// AI-assisted: see docs/AI_LOG.md #14, #23, #28
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useDriver } from '../../context/DriverContext';
 import { useLanguage } from '../../context/LanguageContext';
+import Button from '../../components/common/Button';
 import { createSimulatedTrip, getSimulatorErrorKey } from '../../services/tripService';
 import { PAYMENT_METHODS } from '../../config/trip';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 // Replaces the passenger app (it does not exist in this project): creates real trip requests
 export default function PassengerSimulatorScreen() {
@@ -37,23 +40,25 @@ export default function PassengerSimulatorScreen() {
       <Text style={styles.title}>{t('simulator.title')}</Text>
       <Text style={styles.description}>{t('simulator.description')}</Text>
 
-      {!driver?.isAvailable && <Text style={styles.warning}>{t('simulator.warning')}</Text>}
+      {!driver?.isAvailable && (
+        <View style={styles.warningBox}>
+          <Text style={styles.warning}>{t('simulator.warning')}</Text>
+        </View>
+      )}
 
-      <Pressable
-        style={[styles.button, !canSimulate && styles.buttonDisabled]}
-        disabled={!canSimulate}
+      <Button
+        label={t('simulator.card')}
         onPress={() => handleCreate(PAYMENT_METHODS.mercadopago)}
-      >
-        <Text style={styles.buttonText}>{t('simulator.card')}</Text>
-      </Pressable>
-
-      <Pressable
-        style={[styles.button, styles.secondaryButton, !canSimulate && styles.buttonDisabled]}
         disabled={!canSimulate}
+        style={styles.button}
+      />
+      <Button
+        label={t('simulator.cash')}
+        variant="secondary"
         onPress={() => handleCreate(PAYMENT_METHODS.cash)}
-      >
-        <Text style={[styles.buttonText, styles.secondaryText]}>{t('simulator.cash')}</Text>
-      </Pressable>
+        disabled={!canSimulate}
+        style={styles.button}
+      />
 
       {creating && (
         <View style={styles.row}>
@@ -67,27 +72,14 @@ export default function PassengerSimulatorScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 24 },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text },
-  description: { fontSize: 15, color: colors.muted, marginTop: 8, marginBottom: 24 },
-  warning: { fontSize: 14, color: colors.warning, marginBottom: 16 },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  secondaryButton: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  secondaryText: { color: colors.text },
-  row: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  progress: { marginLeft: 8, color: colors.muted },
-  ok: { color: colors.success, marginTop: 12, fontWeight: '600' },
-  error: { color: colors.error, marginTop: 12, fontWeight: '600' },
+  container: { flex: 1, backgroundColor: colors.background, padding: space.xl },
+  title: type.title,
+  description: { ...type.body, color: colors.muted, marginTop: space.sm, marginBottom: space.xl },
+  warningBox: { backgroundColor: '#FBF0D0', borderRadius: radius.card, padding: space.md, marginBottom: space.lg },
+  warning: { ...type.body, color: colors.warning },
+  button: { marginBottom: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', marginTop: space.sm },
+  progress: { ...type.body, color: colors.muted, marginLeft: space.sm },
+  ok: { fontFamily: fonts.semibold, fontSize: 15, color: colors.success, marginTop: space.md },
+  error: { fontFamily: fonts.semibold, fontSize: 15, color: colors.error, marginTop: space.md },
 });

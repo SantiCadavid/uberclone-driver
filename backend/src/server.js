@@ -1,11 +1,17 @@
-// AI-assisted: see docs/AI_LOG.md #17
+// AI-assisted: see docs/AI_LOG.md #17, #26
 import express from 'express';
 import cors from 'cors';
 import { config } from './config.js';
 import { requireAuth } from './auth.js';
 import { HttpError } from './errors.js';
 import { createTripPreference, getPayment } from './mercadoPago.js';
-import { applyPaymentResult, assertPayableTrip, loadTrip, verifyTripPayment } from './payments.js';
+import {
+  applyCashPayment,
+  applyPaymentResult,
+  assertPayableTrip,
+  loadTrip,
+  verifyTripPayment,
+} from './payments.js';
 
 const app = express();
 app.use(cors());
@@ -50,6 +56,16 @@ app.post(
     const trip = await loadTrip(tripId);
     if (trip.driverId !== req.uid) throw new HttpError(403, 'trip-not-yours');
     res.json(await verifyTripPayment(tripId));
+  }),
+);
+
+// Cash collected by the driver: the server marks the trip paid and takes the commission from the balance
+app.post(
+  '/payments/cash',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const tripId = readTripId(req.body);
+    res.json(await applyCashPayment(tripId, req.uid));
   }),
 );
 

@@ -1,15 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #20, #22, #25
+// AI-assisted: see docs/AI_LOG.md #20, #22, #25, #27
 import { useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -19,10 +10,13 @@ import DateField from '../../components/form/DateField';
 import PhotoField from '../../components/form/PhotoField';
 import CheckboxField from '../../components/form/CheckboxField';
 import TabStatus from '../../components/form/TabStatus';
+import Button from '../../components/common/Button';
 import { REGISTRATION_RULES as RULES } from '../../config/registration';
 import { PRICING } from '../../config/pricing';
 import { hasErrors } from '../../utils/validators';
 import { colors } from '../../theme/colors';
+import { type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 // Expiry pickers start tomorrow and cannot go before it or beyond the allowed horizon
 const startOfTomorrow = () => {
@@ -236,24 +230,15 @@ export default function DocumentsScreen({ navigation }) {
           />
         </View>
 
-        <Pressable
-          style={[styles.button, !canSubmit && styles.buttonDisabled]}
+        <Button
+          label={t('register.submit')}
           onPress={handleSubmit}
           disabled={!canSubmit}
-        >
-          {submitting ? (
-            <View style={styles.progressRow}>
-              <ActivityIndicator color={colors.primaryText} />
-              {uploadProgress && (
-                <Text style={styles.progressText}>
-                  {t('upload.progress', { done: uploadProgress.done, total: uploadProgress.total })}
-                </Text>
-              )}
-            </View>
-          ) : (
-            <Text style={styles.buttonText}>{t('register.submit')}</Text>
-          )}
-        </Pressable>
+          loading={submitting}
+          loadingLabel={
+            uploadProgress ? t('upload.progress', { done: uploadProgress.done, total: uploadProgress.total }) : undefined
+          }
+        />
         {submitError && <Text style={styles.submitError}>{submitError}</Text>}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -263,26 +248,16 @@ export default function DocumentsScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 8 },
-  section: { fontSize: 17, fontWeight: 'bold', color: colors.text, marginTop: 16, marginBottom: 10 },
-  note: { fontSize: 13, color: colors.muted, marginBottom: 12 },
+  content: { padding: space.xl, paddingBottom: space.xxl + space.lg },
+  title: { ...type.title, marginBottom: space.sm },
+  section: { ...type.section, marginTop: space.xl, marginBottom: space.md },
+  note: { ...type.caption, marginBottom: space.md },
   statusBox: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    padding: space.md,
+    marginTop: space.sm,
+    marginBottom: space.lg,
   },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: { backgroundColor: '#9CA3AF' },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  progressRow: { flexDirection: 'row', alignItems: 'center' },
-  progressText: { color: colors.primaryText, fontSize: 15, fontWeight: '600', marginLeft: 10 },
-  submitError: { color: colors.error, textAlign: 'center', marginTop: 12, fontWeight: '600' },
+  submitError: { ...type.bodyStrong, color: colors.error, textAlign: 'center', marginTop: space.md },
 });

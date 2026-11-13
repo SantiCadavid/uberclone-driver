@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #8, #20, #22
+// AI-assisted: see docs/AI_LOG.md #8, #20, #22, #27, #29
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -6,6 +6,8 @@ import FormField from './FormField';
 import { formStyles } from './formStyles';
 import { useLanguage } from '../../context/LanguageContext';
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/typography';
+import { space } from '../../theme/layout';
 
 const DEFAULT_PICKER_DATE = new Date(2000, 0, 1);
 
@@ -32,10 +34,10 @@ export default function DateField({
     setOpen(true);
   };
 
-  // Android shows its own dialog: "set" means the user confirmed a date
-  const handleAndroidChange = (event, selectedDate) => {
+  // Android dialog: onValueChange = the user confirmed a date; onDismiss = closed without choosing
+  const handleAndroidValue = (event, selectedDate) => {
     setOpen(false);
-    if (event.type === 'set' && selectedDate) onChange(selectedDate);
+    onChange(selectedDate);
   };
 
   const confirmIosDate = () => {
@@ -61,7 +63,8 @@ export default function DateField({
           mode="date"
           maximumDate={maximumDate}
           minimumDate={minimumDate}
-          onChange={handleAndroidChange}
+          onValueChange={handleAndroidValue}
+          onDismiss={() => setOpen(false)}
         />
       )}
 
@@ -79,7 +82,7 @@ export default function DateField({
                 locale={locale}
                 maximumDate={maximumDate}
                 minimumDate={minimumDate}
-                onChange={(event, selectedDate) => selectedDate && setDraftDate(selectedDate)}
+                onValueChange={(event, selectedDate) => setDraftDate(selectedDate)}
               />
               <View style={styles.actions}>
                 <Pressable style={styles.actionButton} onPress={() => setOpen(false)}>
@@ -99,8 +102,8 @@ export default function DateField({
 
 const styles = StyleSheet.create({
   icon: { fontSize: 16 },
-  actions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  actionButton: { paddingVertical: 10, paddingHorizontal: 16 },
-  cancelText: { fontSize: 16, color: colors.muted },
-  confirmText: { fontSize: 16, color: colors.text, fontWeight: 'bold' },
+  actions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: space.sm },
+  actionButton: { paddingVertical: space.md, paddingHorizontal: space.lg },
+  cancelText: { fontFamily: fonts.medium, fontSize: 16, color: colors.muted },
+  confirmText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.text },
 });

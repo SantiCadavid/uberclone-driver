@@ -1,9 +1,9 @@
-// AI-assisted: see docs/AI_LOG.md #21
+// AI-assisted: see docs/AI_LOG.md #21, #27
 import { StyleSheet, Text, View } from 'react-native';
 import SegmentedControl from './SegmentedControl';
 import { useLanguage } from '../../context/LanguageContext';
 import { LANGUAGE_OPTIONS } from '../../config/registration';
-import { colors } from '../../theme/colors';
+import { type } from '../../theme/typography';
 
 // Same selector on Login, sign-up and Profile: one language for the whole app
 export default function LanguageSelector({ showLabel = true }) {
@@ -17,5 +17,5 @@ export default function LanguageSelector({ showLabel = true }) {
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 13, color: colors.muted, marginBottom: 6 },
+  label: { ...type.caption, marginBottom: 6 },
 });
