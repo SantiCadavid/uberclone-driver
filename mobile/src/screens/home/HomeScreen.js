@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #11, #13, #15, #21
+// AI-assisted: see docs/AI_LOG.md #11, #13, #15, #21, #23
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -27,7 +27,7 @@ export default function HomeScreen() {
   const { uid, driver, loading, error } = useDriver();
   const { t } = useLanguage();
   const [toggling, setToggling] = useState(false);
-  const [actionError, setActionError] = useState(null);
+  const [actionErrorKey, setActionErrorKey] = useState(null);
   const [lastAvailable, setLastAvailable] = useState(false);
   const mapRef = useRef(null);
   const centeredRef = useRef(false);
@@ -95,13 +95,13 @@ export default function HomeScreen() {
 
   const handleToggle = useCallback(
     async (nextValue) => {
-      setActionError(null);
+      setActionErrorKey(null);
       if (nextValue && !approved) {
-        setActionError(t('home.error.notApproved'));
+        setActionErrorKey('home.error.notApproved');
         return;
       }
       if (nextValue && permissionDenied) {
-        setActionError(t('home.error.permission'));
+        setActionErrorKey('home.error.permission');
         return;
       }
       setToggling(true);
@@ -114,12 +114,12 @@ export default function HomeScreen() {
         setLastAvailable(nextValue);
         saveLastAvailability(nextValue);
       } catch (toggleError) {
-        setActionError(t('home.error.toggle'));
+        setActionErrorKey('home.error.toggle');
       } finally {
         setToggling(false);
       }
     },
-    [approved, permissionDenied, uid, t],
+    [approved, permissionDenied, uid],
   );
 
   const dismissReconnect = useCallback(() => {
@@ -138,7 +138,7 @@ export default function HomeScreen() {
   if (error || !driver) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>{error ?? t('home.error.noProfile')}</Text>
+        <Text style={styles.errorText}>{t(error ?? 'home.error.noProfile')}</Text>
       </View>
     );
   }
@@ -146,11 +146,12 @@ export default function HomeScreen() {
   const status = STATUS_DISPLAY[driver.approvalStatus] ?? STATUS_DISPLAY[APPROVAL_STATUS.pending];
   const firstName = driver.fullName.split(' ')[0];
   const showReconnect = lastAvailable && approved && !isAvailable && !permissionDenied && !toggling;
-  const visibleError =
-    actionError ??
+  // Every error is a translation key, so it follows the current language
+  const visibleErrorKey =
+    actionErrorKey ??
     requestsError ??
     locationError ??
-    (permissionDenied ? t('home.error.permissionBanner') : null);
+    (permissionDenied ? 'home.error.permissionBanner' : null);
 
   return (
     <View style={styles.flex}>
@@ -226,10 +227,8 @@ export default function HomeScreen() {
 
           {!approved && <Text style={styles.note}>{t('home.pendingNote')}</Text>}
           {receiving && <Text style={styles.note}>{t('home.waiting')}</Text>}
-          {notice && (
-            <Text style={[styles.notice, { color: NOTICE_COLORS[notice.type] }]}>{notice.text}</Text>
-          )}
-          {visibleError && <Text style={styles.errorText}>{visibleError}</Text>}
+          {notice && <Text style={[styles.notice, { color: NOTICE_COLORS[notice.type] }]}>{t(notice.key)}</Text>}
+          {visibleErrorKey && <Text style={styles.errorText}>{t(visibleErrorKey)}</Text>}
         </View>
       )}
     </View>

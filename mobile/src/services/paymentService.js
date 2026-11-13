@@ -1,9 +1,10 @@
-// AI-assisted: see docs/AI_LOG.md #18
+// AI-assisted: see docs/AI_LOG.md #18, #23
 import { doc, increment, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { PAYMENT_CONFIG, PAYMENT_STATUS } from '../config/payment';
 import { PAYMENT_METHODS, TRIP_STATUS } from '../config/trip';
 import { getCollectionActions } from '../utils/paymentStatus';
+import { defaultT } from '../i18n';
 
 // ---------- Backend (Mercado Pago) ----------
 
@@ -97,28 +98,31 @@ export async function registerCashPayment(tripId, driverId) {
 
 // ---------- Messages ----------
 
-const SESSION_EXPIRED = 'Tu sesión expiró. Cierra sesión e ingresa de nuevo.';
-
-const PAYMENT_ERROR_MESSAGES = {
-  'trip-not-completed': 'El viaje aún no está finalizado; todavía no se puede cobrar.',
-  'trip-not-card': 'Este viaje no es con tarjeta. Usa "Efectivo recibido".',
-  'amount-mismatch': 'El monto no coincide con el registrado en el servidor. Vuelve a abrir el viaje.',
-  'invalid-token': SESSION_EXPIRED,
-  'missing-token': SESSION_EXPIRED,
-  'not-authenticated': SESSION_EXPIRED,
-  'trip-not-yours': 'Este viaje no está asignado a ti.',
-  'trip-not-found': 'El viaje ya no existe.',
-  'cash-not-allowed': 'El cobro ya se registró o hay un pago con tarjeta en curso. Revisa el estado del pago.',
-  'trip-invalid-amounts': 'El viaje no tiene los montos calculados; no se puede registrar el cobro.',
-  'invalid-preference': 'El servidor de pagos no entregó un link de pago válido. Inténtalo de nuevo.',
-  'payment-provider-error': 'Mercado Pago no respondió. Inténtalo de nuevo en unos segundos.',
-  'backend-unavailable': 'El servidor de pagos no está disponible. Inténtalo de nuevo en unos minutos.',
-  'backend-not-configured': 'La app no tiene configurado el servidor de pagos.',
-  'browser-error': 'No se pudo abrir el pago. Inténtalo de nuevo.',
-  network: 'Sin conexión con el servidor de pagos. Revisa tu internet.',
-  timeout: 'El servidor de pagos no respondió a tiempo. Inténtalo de nuevo.',
+const PAYMENT_ERROR_KEYS = {
+  'trip-not-completed': 'payment.error.notCompleted',
+  'trip-not-card': 'payment.error.notCard',
+  'amount-mismatch': 'payment.error.amountMismatch',
+  'invalid-token': 'payment.error.session',
+  'missing-token': 'payment.error.session',
+  'not-authenticated': 'payment.error.session',
+  'trip-not-yours': 'payment.error.notYours',
+  'trip-not-found': 'payment.error.notFound',
+  'cash-not-allowed': 'payment.error.cashNotAllowed',
+  'trip-invalid-amounts': 'payment.error.invalidAmounts',
+  'invalid-preference': 'payment.error.invalidPreference',
+  'payment-provider-error': 'payment.error.provider',
+  'backend-unavailable': 'payment.error.backendUnavailable',
+  'backend-not-configured': 'payment.error.backendNotConfigured',
+  'browser-error': 'payment.error.browser',
+  network: 'payment.error.network',
+  timeout: 'payment.error.timeout',
 };
 
-export function getPaymentErrorMessage(error) {
-  return PAYMENT_ERROR_MESSAGES[error?.message] ?? 'No se pudo procesar el cobro. Inténtalo de nuevo.';
+// Returns a translation key (the hook stores it; the screen translates it)
+export function getPaymentErrorKey(error) {
+  return PAYMENT_ERROR_KEYS[error?.message] ?? 'payment.error.unknown';
+}
+
+export function getPaymentErrorMessage(error, t = defaultT) {
+  return t(getPaymentErrorKey(error));
 }

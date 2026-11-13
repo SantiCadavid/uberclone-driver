@@ -1,9 +1,9 @@
-// AI-assisted: see docs/AI_LOG.md #18
+// AI-assisted: see docs/AI_LOG.md #18, #23
 import { useCallback, useEffect, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import {
   createPaymentPreference,
-  getPaymentErrorMessage,
+  getPaymentErrorKey,
   registerCashPayment,
   verifyPayment,
 } from '../services/paymentService';
@@ -12,20 +12,21 @@ import { withTimeout } from '../utils/withTimeout';
 import { TRIP_CONFIG } from '../config/trip';
 import { PAYMENT_STATUS } from '../config/payment';
 
+// Messages are stored as translation keys, so they follow the language if it changes
 const VERIFY_MESSAGES = {
-  [PAYMENT_STATUS.APPROVED]: { type: 'success', text: 'Pago aprobado por Mercado Pago.' },
-  [PAYMENT_STATUS.PENDING]: { type: 'info', text: 'El pago quedó pendiente. Toca "Verificar pago" en unos minutos.' },
-  [PAYMENT_STATUS.REJECTED]: { type: 'error', text: 'El pago fue rechazado. Puedes reintentar o cobrar en efectivo.' },
+  [PAYMENT_STATUS.APPROVED]: { type: 'success', key: 'payment.verify.approved' },
+  [PAYMENT_STATUS.PENDING]: { type: 'info', key: 'payment.verify.pending' },
+  [PAYMENT_STATUS.REJECTED]: { type: 'error', key: 'payment.verify.rejected' },
 };
 // When the answer has no known status we never invent a result: Firestore shows the real one
-const VERIFY_DONE = { type: 'info', text: 'Verificación terminada. El estado del pago se muestra arriba.' };
+const VERIFY_DONE = { type: 'info', key: 'payment.verify.done' };
 
 const verifyMessage = (result) => VERIFY_MESSAGES[normalizePaymentStatus(result?.paymentStatus)] ?? VERIFY_DONE;
 
 // Custom hook: the collection actions of a trip. The screen only calls these functions.
 export function useTripPayment(trip, driverId) {
   const [busyAction, setBusyAction] = useState(null); // 'card' | 'verify' | 'cash' | null
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState(null); // { type, key }
   const tripId = trip?.id ?? null;
 
   // A different trip starts without old messages
@@ -39,7 +40,7 @@ export function useTripPayment(trip, driverId) {
     try {
       setMessage(await action());
     } catch (actionError) {
-      setMessage({ type: 'error', text: getPaymentErrorMessage(actionError) });
+      setMessage({ type: 'error', key: getPaymentErrorKey(actionError) });
     } finally {
       setBusyAction(null);
     }
@@ -70,7 +71,7 @@ export function useTripPayment(trip, driverId) {
     () =>
       run('cash', async () => {
         await withTimeout(registerCashPayment(tripId, driverId), TRIP_CONFIG.actionTimeoutMs);
-        return { type: 'success', text: 'Cobro en efectivo registrado.' };
+        return { type: 'success', key: 'payment.cashRegistered' };
       }),
     [run, tripId, driverId],
   );

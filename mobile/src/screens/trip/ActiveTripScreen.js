@@ -1,39 +1,33 @@
-// AI-assisted: see docs/AI_LOG.md #16, #18
+// AI-assisted: see docs/AI_LOG.md #16, #18, #23
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useDriver } from '../../context/DriverContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useTripPayment } from '../../hooks/useTripPayment';
 import {
   cancelTripByDriver,
   finishTrip,
-  getTripErrorMessage,
+  getTripErrorKey,
   startPickup,
   startTrip,
 } from '../../services/tripService';
 import { withTimeout } from '../../utils/withTimeout';
-import { PAYMENT_METHOD_LABELS, formatCop } from '../../utils/format';
+import { formatCop, paymentMethodLabel } from '../../utils/format';
 import { getCollectionActions, getPaymentStatusInfo } from '../../utils/paymentStatus';
 import { TRIP_CONFIG, TRIP_STATUS } from '../../config/trip';
 import { PAYMENT_STATUS } from '../../config/payment';
 import { LOCATION_CONFIG } from '../../config/location';
-import { colors } from '../../theme/colors';
+import { colors, toneColors } from '../../theme/colors';
 
 const toLatLng = (place) => ({ latitude: place.lat, longitude: place.lng });
 
-const TONE_COLORS = {
-  success: colors.success,
-  warning: colors.warning,
-  danger: colors.error,
-  neutral: colors.muted,
-};
-
 const MESSAGE_COLORS = { success: colors.success, info: colors.muted, error: colors.error };
 
-const SCREEN_TITLES = {
-  [TRIP_STATUS.completed]: 'Cobro del viaje',
-  [TRIP_STATUS.paid]: 'Resumen del viaje',
+const SCREEN_TITLE_KEYS = {
+  [TRIP_STATUS.completed]: 'trip.title.collect',
+  [TRIP_STATUS.paid]: 'trip.title.summary',
 };
 
 function Row({ label, value, strong, valueColor }) {
@@ -45,14 +39,17 @@ function Row({ label, value, strong, valueColor }) {
   );
 }
 
-function FareRows({ trip }) {
+function FareRows({ trip, t }) {
   return (
     <>
-      <Row label="Tarifa final" value={formatCop(trip.fare)} />
-      <Row label={`Comisión (${Math.round(trip.commissionRate * 100)} %)`} value={`-${formatCop(trip.commission)}`} />
-      <Row label="Propina" value={formatCop(trip.tip)} />
-      <Row label="Tu ganancia neta" value={formatCop(trip.driverEarnings)} strong />
-      <Row label="Método de pago" value={PAYMENT_METHOD_LABELS[trip.paymentMethod] ?? '—'} />
+      <Row label={t('trip.fare')} value={formatCop(trip.fare)} />
+      <Row
+        label={t('trip.commission', { percent: Math.round(trip.commissionRate * 100) })}
+        value={`-${formatCop(trip.commission)}`}
+      />
+      <Row label={t('trip.tip')} value={formatCop(trip.tip)} />
+      <Row label={t('trip.netEarnings')} value={formatCop(trip.driverEarnings)} strong />
+      <Row label={t('trip.paymentMethod')} value={paymentMethodLabel(trip.paymentMethod, t)} />
     </>
   );
 }
@@ -75,6 +72,7 @@ function ActionButton({ label, onPress, loading, disabled, variant = 'primary' }
 }
 
 export default function ActiveTripScreen({ navigation }) {
+  const { t } = useLanguage();
   const { uid, driver, activeTrip, summaryTripId, summaryTrip, summaryError, dismissSummary } = useDriver();
   // Summary mode: the trip was just paid and is no longer "active"
   const isSummary = !activeTrip && Boolean(summaryTripId);
@@ -92,14 +90,14 @@ export default function ActiveTripScreen({ navigation }) {
     markCash,
   } = useTripPayment(trip, uid);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState(null); // { type, key }
   const pickupStartedRef = useRef(null);
   const mapRef = useRef(null);
 
-  // Header title per stage
+  // Header title per stage, in the current language
   useLayoutEffect(() => {
-    navigation.setOptions({ title: SCREEN_TITLES[status] ?? 'Viaje en curso' });
-  }, [navigation, status]);
+    navigation.setOptions({ title: t(SCREEN_TITLE_KEYS[status] ?? 'nav.activeTrip') });
+  }, [navigation, status, t]);
 
   // accepted -> driver_arriving: calculate the route to the pickup only once per trip
   useEffect(() => {
@@ -110,13 +108,11 @@ export default function ActiveTripScreen({ navigation }) {
 
     withTimeout(startPickup(trip, location), TRIP_CONFIG.routingTimeoutMs + TRIP_CONFIG.actionTimeoutMs)
       .then((routed) => {
-        if (!routed) {
-          setMessage({ type: 'info', text: 'No se pudo calcular la ruta a la recogida. Guíate por el marcador verde.' });
-        }
+        if (!routed) setMessage({ type: 'info', key: 'trip.pickupRouteFailed' });
       })
       .catch((pickupError) => {
         pickupStartedRef.current = null; // allow a retry
-        setMessage({ type: 'error', text: getTripErrorMessage(pickupError) });
+        setMessage({ type: 'error', key: getTripErrorKey(pickupError) });
       });
   }, [trip?.id, status, location, permissionDenied]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -145,7 +141,7 @@ export default function ActiveTripScreen({ navigation }) {
     try {
       await withTimeout(action(), TRIP_CONFIG.actionTimeoutMs);
     } catch (actionError) {
-      setMessage({ type: 'error', text: getTripErrorMessage(actionError) });
+      setMessage({ type: 'error', key: getTripErrorKey(actionError) });
     } finally {
       setBusy(false);
     }
@@ -156,36 +152,36 @@ export default function ActiveTripScreen({ navigation }) {
   const handleFinish = useCallback(() => runAction(() => finishTrip(trip)), [runAction, trip]);
 
   const handleCancel = useCallback(() => {
-    Alert.alert('Cancelar viaje', '¿Seguro que quieres cancelar este viaje?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('trip.cancelTitle'), t('trip.cancelMessage'), [
+      { text: t('trip.no'), style: 'cancel' },
       {
-        text: 'Sí, cancelar',
+        text: t('trip.cancelConfirm'),
         style: 'destructive',
         onPress: () => runAction(() => cancelTripByDriver(trip.id)),
       },
     ]);
-  }, [runAction, trip]);
+  }, [runAction, trip, t]);
 
   // A confirmation (not a form error), so an Alert is the right tool here
   const handleCash = useCallback(() => {
     if (!trip) return;
     Alert.alert(
-      'Cobro en efectivo',
-      `¿Recibiste ${formatCop(trip.fare)} en efectivo? La comisión de ${formatCop(trip.commission)} se descontará de tu saldo.`,
+      t('trip.cashTitle'),
+      t('trip.cashMessage', { fare: formatCop(trip.fare), commission: formatCop(trip.commission) }),
       [
-        { text: 'No', style: 'cancel' },
-        { text: 'Sí, recibido', onPress: markCash },
+        { text: t('trip.no'), style: 'cancel' },
+        { text: t('trip.cashConfirm'), onPress: markCash },
       ],
     );
-  }, [trip, markCash]);
+  }, [trip, markCash, t]);
 
   if (!trip) {
     return (
       <View style={styles.centered}>
         {isSummary && summaryError ? (
           <>
-            <Text style={styles.centeredText}>{summaryError}</Text>
-            <ActionButton label="Continuar" onPress={dismissSummary} />
+            <Text style={styles.centeredText}>{t(summaryError)}</Text>
+            <ActionButton label={t('trip.continue')} onPress={dismissSummary} />
           </>
         ) : (
           <ActivityIndicator size="large" color={colors.primary} />
@@ -196,7 +192,7 @@ export default function ActiveTripScreen({ navigation }) {
 
   const showPickupLeg = status === TRIP_STATUS.accepted || status === TRIP_STATUS.driverArriving;
   const pickupPath = trip.pickupRoute?.path;
-  const paymentInfo = getPaymentStatusInfo(trip.paymentStatus);
+  const paymentInfo = getPaymentStatusInfo(trip.paymentStatus, t);
   const shownMessage = paymentMessage ?? message;
 
   const renderStage = () => {
@@ -205,26 +201,26 @@ export default function ActiveTripScreen({ navigation }) {
         return (
           <View style={styles.inline}>
             <ActivityIndicator color={colors.primary} />
-            <Text style={styles.subtitle}>Calculando ruta a la recogida…</Text>
+            <Text style={[styles.subtitle, styles.inlineText]}>{t('trip.calculatingPickup')}</Text>
           </View>
         );
 
       case TRIP_STATUS.driverArriving:
         return (
           <>
-            <Text style={styles.title}>Recoge a {trip.passengerName}</Text>
+            <Text style={styles.title}>{t('trip.pickUp', { name: trip.passengerName })}</Text>
             <Text style={styles.address}>{trip.origin.address}</Text>
             {trip.pickupRoute && (
               <Text style={styles.subtitle}>
-                {trip.pickupRoute.distanceKm} km · {trip.pickupRoute.durationMin} min hasta la recogida
+                {t('trip.toPickup', { km: trip.pickupRoute.distanceKm, min: trip.pickupRoute.durationMin })}
               </Text>
             )}
             <View style={styles.buttons}>
               <Pressable style={[styles.button, styles.secondary]} onPress={handleCancel} disabled={busy}>
-                <Text style={styles.secondaryText}>Cancelar viaje</Text>
+                <Text style={styles.secondaryText}>{t('trip.cancel')}</Text>
               </Pressable>
               <Pressable style={[styles.button, styles.primary]} onPress={handlePickedUp} disabled={busy}>
-                {busy ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryText}>Pasajero a bordo</Text>}
+                {busy ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryText}>{t('trip.passengerOnBoard')}</Text>}
               </Pressable>
             </View>
           </>
@@ -233,13 +229,13 @@ export default function ActiveTripScreen({ navigation }) {
       case TRIP_STATUS.inProgress:
         return (
           <>
-            <Text style={styles.title}>En viaje con {trip.passengerName}</Text>
-            <Text style={styles.address}>Destino: {trip.destination.address}</Text>
+            <Text style={styles.title}>{t('trip.inTrip', { name: trip.passengerName })}</Text>
+            <Text style={styles.address}>{t('trip.destination', { address: trip.destination.address })}</Text>
             <Text style={styles.subtitle}>
-              {trip.distanceKm} km · {trip.durationMin} min · {PAYMENT_METHOD_LABELS[trip.paymentMethod]}
+              {trip.distanceKm} km · {trip.durationMin} min · {paymentMethodLabel(trip.paymentMethod, t)}
             </Text>
             <Pressable style={[styles.button, styles.primary, styles.fullButton]} onPress={handleFinish} disabled={busy}>
-              {busy ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryText}>Finalizar viaje</Text>}
+              {busy ? <ActivityIndicator color={colors.primaryText} /> : <Text style={styles.primaryText}>{t('trip.finish')}</Text>}
             </Pressable>
           </>
         );
@@ -248,23 +244,23 @@ export default function ActiveTripScreen({ navigation }) {
         const actions = getCollectionActions(trip);
         return (
           <>
-            <Text style={styles.title}>Cobra el viaje</Text>
-            <FareRows trip={trip} />
-            <Row label="Estado del pago" value={paymentInfo.label} valueColor={TONE_COLORS[paymentInfo.tone]} strong />
+            <Text style={styles.title}>{t('trip.collectTitle')}</Text>
+            <FareRows trip={trip} t={t} />
+            <Row label={t('trip.paymentStatus')} value={paymentInfo.label} valueColor={toneColors[paymentInfo.tone]} strong />
             {actions.canPayWithCard && (
               <ActionButton
-                label={paymentInfo.status === PAYMENT_STATUS.REJECTED ? 'Reintentar con Mercado Pago' : 'Cobrar con Mercado Pago'}
+                label={paymentInfo.status === PAYMENT_STATUS.REJECTED ? t('trip.retryCard') : t('trip.payCard')}
                 onPress={payWithCard}
                 loading={busyAction === 'card'}
                 disabled={paymentBusy}
               />
             )}
             {actions.canVerify && (
-              <ActionButton label="Verificar pago" onPress={verify} loading={busyAction === 'verify'} disabled={paymentBusy} />
+              <ActionButton label={t('trip.verify')} onPress={verify} loading={busyAction === 'verify'} disabled={paymentBusy} />
             )}
             {actions.canMarkCash && (
               <ActionButton
-                label="Efectivo recibido"
+                label={t('trip.cashReceived')}
                 variant={actions.canPayWithCard ? 'secondary' : 'primary'}
                 onPress={handleCash}
                 loading={busyAction === 'cash'}
@@ -278,19 +274,15 @@ export default function ActiveTripScreen({ navigation }) {
       case TRIP_STATUS.paid:
         return (
           <>
-            <Text style={styles.title}>Viaje cobrado</Text>
-            <FareRows trip={trip} />
-            <Row label="Estado del pago" value={paymentInfo.label} valueColor={TONE_COLORS[paymentInfo.tone]} strong />
-            <Row label="Tu saldo actual" value={formatCop(driver?.balance)} />
+            <Text style={styles.title}>{t('trip.paidTitle')}</Text>
+            <FareRows trip={trip} t={t} />
+            <Row label={t('trip.paymentStatus')} value={paymentInfo.label} valueColor={toneColors[paymentInfo.tone]} strong />
+            <Row label={t('trip.balance')} value={formatCop(driver?.balance)} />
             {paymentInfo.status === PAYMENT_STATUS.CASH && (
-              <Text style={styles.note}>
-                La comisión ({formatCop(trip.commission)}) se descontó de tu saldo porque el dinero lo recibiste tú.
-              </Text>
+              <Text style={styles.note}>{t('trip.cashNote', { commission: formatCop(trip.commission) })}</Text>
             )}
-            {trip.paymentMethodChangedFrom && (
-              <Text style={styles.note}>Se cobró en efectivo después de un pago con tarjeta rechazado.</Text>
-            )}
-            {isSummary && <ActionButton label="Continuar" onPress={dismissSummary} />}
+            {trip.paymentMethodChangedFrom && <Text style={styles.note}>{t('trip.changedNote')}</Text>}
+            {isSummary && <ActionButton label={t('trip.continue')} onPress={dismissSummary} />}
           </>
         );
 
@@ -309,9 +301,19 @@ export default function ActiveTripScreen({ navigation }) {
         onMapReady={fitMap}
       >
         {showPickupLeg && (
-          <Marker coordinate={toLatLng(trip.origin)} title="Recogida" description={trip.origin.address} pinColor="green" />
+          <Marker
+            coordinate={toLatLng(trip.origin)}
+            title={t('home.marker.pickup')}
+            description={trip.origin.address}
+            pinColor="green"
+          />
         )}
-        <Marker coordinate={toLatLng(trip.destination)} title="Destino" description={trip.destination.address} pinColor="red" />
+        <Marker
+          coordinate={toLatLng(trip.destination)}
+          title={t('home.marker.destination')}
+          description={trip.destination.address}
+          pinColor="red"
+        />
         {showPickupLeg && pickupPath?.length > 1 && (
           <Polyline coordinates={pickupPath} strokeWidth={4} strokeColor="#2563EB" />
         )}
@@ -324,7 +326,7 @@ export default function ActiveTripScreen({ navigation }) {
         {renderStage()}
         {shownMessage && (
           <Text style={[styles.message, { color: MESSAGE_COLORS[shownMessage.type] ?? colors.muted }]}>
-            {shownMessage.text}
+            {t(shownMessage.key, shownMessage.params)}
           </Text>
         )}
       </View>
@@ -351,9 +353,10 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   inline: { flexDirection: 'row', alignItems: 'center' },
+  inlineText: { marginTop: 0, marginLeft: 8 },
   title: { fontSize: 20, fontWeight: 'bold', color: colors.text },
   address: { fontSize: 15, color: colors.text, marginTop: 6 },
-  subtitle: { fontSize: 14, color: colors.muted, marginTop: 6, marginLeft: 0 },
+  subtitle: { fontSize: 14, color: colors.muted, marginTop: 6 },
   buttons: { flexDirection: 'row', marginTop: 16 },
   button: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
   fullButton: { marginTop: 16 },

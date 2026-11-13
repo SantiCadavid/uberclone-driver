@@ -1,16 +1,18 @@
-// AI-assisted: see docs/AI_LOG.md #21, #22
+// AI-assisted: see docs/AI_LOG.md #21, #22, #23
 import es from './es';
 import en from './en';
 import esRegistration from './es.registration';
 import enRegistration from './en.registration';
+import esTrip from './es.trip';
+import enTrip from './en.trip';
 
 export const SUPPORTED_LANGUAGES = ['es', 'en'];
 export const DEFAULT_LANGUAGE = 'es';
 
 // One dictionary per language, merged from one file per area (a test checks both have the same keys)
 export const TRANSLATIONS = {
-  es: { ...es, ...esRegistration },
-  en: { ...en, ...enRegistration },
+  es: { ...es, ...esRegistration, ...esTrip },
+  en: { ...en, ...enRegistration, ...enTrip },
 };
 
 // Locale used by date pickers and date formatting
