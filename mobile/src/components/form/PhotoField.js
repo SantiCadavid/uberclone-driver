@@ -1,10 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #8, #22
+// AI-assisted: see docs/AI_LOG.md #8, #22, #27
 import { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import FormField from './FormField';
 import { pickImageFromCamera, pickImageFromLibrary } from '../../services/imagePicker';
 import { useLanguage } from '../../context/LanguageContext';
 import { colors } from '../../theme/colors';
+import { type } from '../../theme/typography';
+import { radius, space } from '../../theme/layout';
 
 export default function PhotoField({ label, error, value, onChange, aspect = [1, 1], round = false }) {
   const { t } = useLanguage();
@@ -38,7 +40,7 @@ export default function PhotoField({ label, error, value, onChange, aspect = [1,
           <Pressable style={styles.button} onPress={() => handlePick('camera')}>
             <Text style={styles.buttonText}>{t('photo.camera')}</Text>
           </Pressable>
-          <Pressable style={styles.button} onPress={() => handlePick('library')}>
+          <Pressable style={[styles.button, styles.lastButton]} onPress={() => handlePick('library')}>
             <Text style={styles.buttonText}>{t('photo.library')}</Text>
           </Pressable>
         </View>
@@ -49,25 +51,28 @@ export default function PhotoField({ label, error, value, onChange, aspect = [1,
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
-  preview: { width: 96, height: 96, borderRadius: 8 },
+  preview: { width: 96, height: 96, borderRadius: radius.control },
   round: { borderRadius: 48 },
   emptyPreview: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyPreviewError: { borderColor: colors.error },
-  emptyText: { color: colors.muted, fontSize: 13 },
-  buttons: { flex: 1, marginLeft: 16 },
+  emptyText: type.caption,
+  buttons: { flex: 1, marginLeft: space.lg },
   button: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 10,
+    minHeight: 44,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.control,
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
+    marginBottom: space.sm,
   },
-  buttonText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  lastButton: { marginBottom: 0 },
+  buttonText: type.bodyStrong,
 });

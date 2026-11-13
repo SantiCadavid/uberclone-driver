@@ -1,18 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #9, #10, #20, #22
+// AI-assisted: see docs/AI_LOG.md #9, #10, #20, #22, #27
 import { useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useLanguage } from '../../context/LanguageContext';
 import TextField from '../../components/form/TextField';
 import SelectField from '../../components/form/SelectField';
 import PhotoField from '../../components/form/PhotoField';
+import Button from '../../components/common/Button';
 import {
   CAPACITY_BY_CATEGORY,
   MAX_VEHICLE_CAPACITY,
@@ -23,6 +17,8 @@ import {
 import { translateOptions } from '../../i18n';
 import { hasErrors } from '../../utils/validators';
 import { colors } from '../../theme/colors';
+import { type } from '../../theme/typography';
+import { space } from '../../theme/layout';
 
 export default function VehicleScreen({ navigation }) {
   const { t } = useLanguage();
@@ -146,9 +142,7 @@ export default function VehicleScreen({ navigation }) {
         {/* Above the button so the tab bar never hides it */}
         {showSummary && <Text style={styles.summaryError}>{t('register.summaryError')}</Text>}
 
-        <Pressable style={styles.button} onPress={handleNext}>
-          <Text style={styles.buttonText}>{t('register.nextDocuments')}</Text>
-        </Pressable>
+        <Button label={t('register.nextDocuments')} onPress={handleNext} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -157,20 +151,7 @@ export default function VehicleScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 16 },
-  summaryError: {
-    color: colors.error,
-    textAlign: 'center',
-    marginBottom: 12,
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
+  content: { padding: space.xl, paddingBottom: space.xxl + space.lg },
+  title: { ...type.title, marginBottom: space.xl },
+  summaryError: { ...type.bodyStrong, color: colors.error, textAlign: 'center', marginBottom: space.md },
 });

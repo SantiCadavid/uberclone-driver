@@ -1,7 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #6, #20, #21, #22
+// AI-assisted: see docs/AI_LOG.md #6, #20, #21, #22, #27
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -14,9 +13,24 @@ import {
 } from 'react-native';
 import { useLanguage } from '../../context/LanguageContext';
 import LanguageSelector from '../../components/common/LanguageSelector';
+import Button from '../../components/common/Button';
+import { formStyles } from '../../components/form/formStyles';
 import { getAuthErrorMessage, loginWithEmail } from '../../services/authService';
 import { validateEmail, validateRequired } from '../../utils/validators';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { space } from '../../theme/layout';
+
+// Brand mark: lane markings in road-sign yellow
+function LaneMark() {
+  return (
+    <View style={styles.lane} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {[0, 1, 2, 3].map((index) => (
+        <View key={index} style={styles.dash} />
+      ))}
+    </View>
+  );
+}
 
 export default function LoginScreen({ navigation }) {
   const { t } = useLanguage();
@@ -63,15 +77,16 @@ export default function LoginScreen({ navigation }) {
         keyboardDismissMode="on-drag"
       >
         <View style={styles.languageBox}>
-          <LanguageSelector />
+          <LanguageSelector showLabel={false} />
         </View>
 
+        <LaneMark />
         <Text style={styles.title}>{t('login.title')}</Text>
         <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
 
         <Text style={styles.label}>{t('login.email')}</Text>
         <TextInput
-          style={[styles.input, errors.email && styles.inputError]}
+          style={[formStyles.input, errors.email && formStyles.inputError]}
           value={email}
           onChangeText={setEmail}
           placeholder={t('login.emailPlaceholder')}
@@ -88,7 +103,7 @@ export default function LoginScreen({ navigation }) {
         <Text style={styles.label}>{t('login.password')}</Text>
         <TextInput
           ref={passwordRef}
-          style={[styles.input, errors.password && styles.inputError]}
+          style={[formStyles.input, errors.password && formStyles.inputError]}
           value={password}
           onChangeText={setPassword}
           placeholder={t('login.passwordPlaceholder')}
@@ -100,20 +115,10 @@ export default function LoginScreen({ navigation }) {
         />
         {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-        <Pressable
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.primaryText} />
-          ) : (
-            <Text style={styles.buttonText}>{t('login.submit')}</Text>
-          )}
-        </Pressable>
+        <Button label={t('login.submit')} onPress={handleLogin} loading={loading} style={styles.submit} />
         {submitError && <Text style={styles.submitError}>{submitError}</Text>}
 
-        <Pressable style={styles.linkButton} onPress={handleGoToRegister}>
+        <Pressable style={styles.linkButton} onPress={handleGoToRegister} hitSlop={8}>
           <Text style={styles.linkText}>{t('login.register')}</Text>
         </Pressable>
       </ScrollView>
@@ -126,39 +131,17 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1, // keeps the form centered when there is room, scrollable when the keyboard is open
     justifyContent: 'center',
-    padding: 24,
+    padding: space.xl,
   },
-  languageBox: { marginBottom: 32 },
-  title: { fontSize: 26, fontWeight: 'bold', color: colors.text, textAlign: 'center' },
-  subtitle: {
-    fontSize: 15,
-    color: colors.muted,
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 32,
-  },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 12, marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  inputError: { borderColor: colors.error },
-  errorText: { color: colors.error, fontSize: 13, marginTop: 4 },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 28,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
-  submitError: { color: colors.error, fontSize: 14, textAlign: 'center', marginTop: 12 },
-  linkButton: { marginTop: 24, alignItems: 'center' },
-  linkText: { color: colors.text, fontSize: 15, textDecorationLine: 'underline' },
+  languageBox: { marginBottom: space.xxl },
+  lane: { flexDirection: 'row', marginBottom: space.lg },
+  dash: { width: 28, height: 6, borderRadius: 3, backgroundColor: colors.signal, marginRight: space.sm },
+  title: type.title,
+  subtitle: { ...type.body, color: colors.muted, marginTop: space.xs, marginBottom: space.xl },
+  label: { ...type.label, marginTop: space.md, marginBottom: 6 },
+  errorText: { ...type.caption, color: colors.error, marginTop: space.xs },
+  submit: { marginTop: space.xl },
+  submitError: { ...type.body, color: colors.error, textAlign: 'center', marginTop: space.md },
+  linkButton: { marginTop: space.xl, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  linkText: { fontFamily: fonts.medium, fontSize: 15, color: colors.text, textDecorationLine: 'underline' },
 });

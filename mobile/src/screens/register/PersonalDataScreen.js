@@ -1,13 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #8, #20, #22
+// AI-assisted: see docs/AI_LOG.md #8, #20, #22, #27
 import { useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useLanguage } from '../../context/LanguageContext';
 import FormField from '../../components/form/FormField';
@@ -16,10 +9,13 @@ import SelectField from '../../components/form/SelectField';
 import DateField from '../../components/form/DateField';
 import PhotoField from '../../components/form/PhotoField';
 import LanguageSelector from '../../components/common/LanguageSelector';
+import Button from '../../components/common/Button';
 import { GENDER_OPTIONS, REGISTRATION_RULES as RULES } from '../../config/registration';
 import { translateOptions } from '../../i18n';
 import { hasErrors } from '../../utils/validators';
 import { colors } from '../../theme/colors';
+import { type } from '../../theme/typography';
+import { space } from '../../theme/layout';
 
 export default function PersonalDataScreen({ navigation }) {
   const { t } = useLanguage();
@@ -169,9 +165,7 @@ export default function PersonalDataScreen({ navigation }) {
         {/* Above the button so the tab bar never hides it */}
         {showSummary && <Text style={styles.summaryError}>{t('register.summaryError')}</Text>}
 
-        <Pressable style={styles.button} onPress={handleNext}>
-          <Text style={styles.buttonText}>{t('register.nextVehicle')}</Text>
-        </Pressable>
+        <Button label={t('register.nextVehicle')} onPress={handleNext} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -180,20 +174,7 @@ export default function PersonalDataScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 22, fontWeight: 'bold', color: colors.text, marginBottom: 16 },
-  summaryError: {
-    color: colors.error,
-    textAlign: 'center',
-    marginBottom: 12,
-    fontWeight: '600',
-  },
-  button: {
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
+  content: { padding: space.xl, paddingBottom: space.xxl + space.lg },
+  title: { ...type.title, marginBottom: space.xl },
+  summaryError: { ...type.bodyStrong, color: colors.error, textAlign: 'center', marginBottom: space.md },
 });

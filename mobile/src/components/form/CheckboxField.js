@@ -1,6 +1,8 @@
-// AI-assisted: see docs/AI_LOG.md #20
+// AI-assisted: see docs/AI_LOG.md #20, #27
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
+import { fonts, type } from '../../theme/typography';
+import { space } from '../../theme/layout';
 
 // Checkbox with its label and the error message right below it (no Alert)
 export default function CheckboxField({ label, checked, onChange, error }) {
@@ -23,22 +25,22 @@ export default function CheckboxField({ label, checked, onChange, error }) {
 }
 
 const styles = StyleSheet.create({
-  field: { marginBottom: 16 },
+  field: { marginBottom: space.lg },
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   box: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     borderWidth: 2,
     borderColor: colors.border,
-    borderRadius: 6,
+    borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: space.md,
     marginTop: 1,
   },
   boxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   boxError: { borderColor: colors.error },
-  check: { color: colors.primaryText, fontSize: 16, fontWeight: 'bold' },
-  label: { flex: 1, fontSize: 15, color: colors.text },
-  error: { color: colors.error, fontSize: 13, marginTop: 6 },
+  check: { color: colors.primaryText, fontFamily: fonts.bold, fontSize: 16 },
+  label: { ...type.body, flex: 1 },
+  error: { ...type.caption, color: colors.error, marginTop: 6 },
 });

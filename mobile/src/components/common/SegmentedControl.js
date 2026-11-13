@@ -1,8 +1,10 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #27
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/typography';
+import { radius } from '../../theme/layout';
 
-// Row of mutually exclusive options (filters)
+// Row of mutually exclusive options (filters, language)
 export default function SegmentedControl({ options, value, onChange }) {
   return (
     <View style={styles.container}>
@@ -25,9 +27,9 @@ export default function SegmentedControl({ options, value, onChange }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 8, padding: 3 },
-  segment: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 },
+  container: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.control, padding: 4 },
+  segment: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 9 },
   selected: { backgroundColor: colors.primary },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text },
-  selectedLabel: { color: colors.primaryText },
+  label: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
+  selectedLabel: { fontFamily: fonts.semibold, color: colors.primaryText },
 });
