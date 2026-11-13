@@ -424,7 +424,7 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
   - Usado: modo avión, backend apagado, permisos del sistema, consola de Firestore para simular la cancelación de una solicitud y el saldo en cero, tarjetas de prueba APRO, CONT y OTHE, git restore para deshacer las pruebas temporales.
   - Modificado: paymentService registra en desarrollo la ruta y el código HTTP cuando el backend responde sin JSON. [COMPLETAR con la causa encontrada del fallo intermitente de "Cobrar con Mercado Pago"]
   - Descartado: guardar capturas en el repositorio (las evidencias quedan en esta tabla y en el video final) y las pruebas de notificaciones push (FCM no funciona en Expo Go para iPhone; se explica en la sustentación).
-- Archivos y commit: docs/AI_LOG.md, mobile/src/services/paymentService.js — [HASH]
+- Archivos y commit: docs/AI_LOG.md, mobile/src/services/paymentService.js — [f86479a]
 - Verificación:
   | # | Prueba | Resultado |
   |---|---|---|
