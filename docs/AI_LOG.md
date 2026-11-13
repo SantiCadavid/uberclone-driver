@@ -395,3 +395,75 @@ Cada entrada registra el prompt, la respuesta resumida, qué se usó, modificó 
 - Archivos y commit: mobile/src/hooks/useReducedMotion.js, mobile/src/components/trip/TripRequestCard.js, mobile/src/screens/home/HomeScreen.js, mobile/src/screens/trip/ActiveTripScreen.js, mobile/src/screens/simulator/PassengerSimulatorScreen.js — [28a3692]
 - Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 17 suites y 135 pruebas; franja animada al cambiar la disponibilidad; tarjeta de solicitud con entrada y barra continua, en rojo los últimos 5 segundos; ruta punteada a la recogida y continua en el viaje; marca animada al cobrar; con reducir movimiento todo aparece sin animación.
 - Aprendizaje: Entendí que el movimiento debe responder a algo importante y no decorar, que el driver nativo hace las animaciones fluidas pero solo admite transform y opacity, y que cada animación iniciada en un useEffect también debe detenerse en su limpieza. Haría distinto: definir desde el inicio qué momentos de la app merecen animación.
+
+### Entrada #29
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Completar la estética (E3): esqueletos de carga, estados vacíos que invitan a actuar, rediseño del historial, ganancias, perfil y menú, y resolver los avisos de la terminal.
+- Prompt: "Reemplazar los spinners del historial y las ganancias por esqueletos con la forma del contenido (pulso que se detiene en la limpieza y respeta reducir movimiento), convertir los estados vacíos en invitaciones a actuar con un botón a Inicio, aplicar la identidad visual al historial, el detalle del viaje, las ganancias, el perfil y el menú lateral, migrar DateTimePicker de onChange a onValueChange y onDismiss verificando la API en el paquete, y diagnosticar el aviso de Reanimated sin cambiar versiones."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se crearon Skeleton (Animated.loop con limpieza) y EmptyState, y los diccionarios de diseño. HistoryScreen y EarningsScreen muestran esqueletos y vacíos con acción; TripHistoryItem, TripDetailModal, ProfileScreen y DriverDrawer adoptaron Barlow, montos tabulares, Button y la foto en el menú. DateField y el selector del historial usan onValueChange y onDismiss. El aviso de Reanimated proviene de la librería del menú lateral.
+- Qué se usó / modificó / descartó:
+  - Usado: Animated.loop con useNativeDriver, componentes comunes Skeleton, EmptyState y Button, verificación de la API de DateTimePicker en el paquete publicado.
+  - Modificado: los estados vacíos ahora tienen título, mensaje y acción; Cerrar sesión usa la variante de peligro.
+  - Descartado: actualizar @react-navigation/drawer o Reanimated para quitar el aviso (cambiar versiones al final del proyecto es riesgoso; el aviso es inofensivo y queda documentado).
+- Archivos y commit: mobile/src/components/common/Skeleton.js, mobile/src/components/common/EmptyState.js, mobile/src/i18n/es.design.js, mobile/src/i18n/en.design.js, mobile/src/i18n/index.js, mobile/src/components/form/DateField.js, mobile/src/components/trip/TripHistoryItem.js, mobile/src/components/trip/TripDetailModal.js, mobile/src/screens/history/HistoryScreen.js, mobile/src/screens/earnings/EarningsScreen.js, mobile/src/screens/profile/ProfileScreen.js, mobile/src/navigation/DriverDrawer.js — [e575dca]
+- Verificación: [COMPLETAR TRAS LAS PRUEBAS] npm test con 17 suites y 135 pruebas; esqueletos en historial y ganancias; vacíos con botón a Inicio; menú con foto y Barlow; perfil rediseñado; selectores de fecha funcionando y sin el aviso de onChange; confirmado que el código propio no importa Reanimated.
+- Aprendizaje: Entendí que los estados de carga y vacío también son diseño: deben anticipar el contenido y decir qué hacer. También entendí la importancia de verificar la API de una librería en el paquete real antes de migrar, y de distinguir los avisos propios de los de dependencias. Haría distinto: diseñar los estados vacíos y de carga al mismo tiempo que cada pantalla.
+
+### Entrada #30
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Ejecutar las pruebas de robustez del cierre (paso 23A) desde el punto de vista de la docente y documentar sus resultados.
+- Prompt: "Preparar una tabla de pruebas para intentar romper la app: formularios vacíos e inválidos, sin internet, backend caído, permisos denegados, temporizador en cero, aceptar dos veces, solicitud cancelada, pagos aprobado, pendiente y rechazado, saldo negativo, efectivo dos veces, cuenta pendiente y cierre de la app durante el cobro; además pruebas temporales de cambio de comisión, paginación y eliminación de la limpieza de un useEffect, con la forma segura de deshacerlas. Listar lo que no se evita sino que se explica."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se entregó una tabla de 21 pruebas con su resultado esperado, las instrucciones para deshacer las pruebas temporales con git restore y la lista de limitaciones que se explican en la sustentación. Se agregó un registro en modo desarrollo para diagnosticar respuestas del backend que no son JSON.
+- Qué se usó / modificó / descartó:
+  - Usado: modo avión, backend apagado, permisos del sistema, consola de Firestore para simular la cancelación de una solicitud y el saldo en cero, tarjetas de prueba APRO, CONT y OTHE, git restore para deshacer las pruebas temporales.
+  - Modificado: paymentService registra en desarrollo la ruta y el código HTTP cuando el backend responde sin JSON. [COMPLETAR con la causa encontrada del fallo intermitente de "Cobrar con Mercado Pago"]
+  - Descartado: guardar capturas en el repositorio (las evidencias quedan en esta tabla y en el video final) y las pruebas de notificaciones push (FCM no funciona en Expo Go para iPhone; se explica en la sustentación).
+- Archivos y commit: docs/AI_LOG.md, mobile/src/services/paymentService.js — [f86479a]
+- Verificación:
+  | # | Prueba | Resultado |
+  |---|---|---|
+  | 1 | Formulario vacío | ✓ |
+  | 2 | Formato inválido | ✓ |
+  | 3 | Sin internet en el Login | ✓ |
+  | 4 | Sin internet en el viaje | ✓ |
+  | 5 | Backend caído | ✓ |
+  | 6 | Permiso de ubicación denegado | ✓ |
+  | 7 | Permiso de cámara denegado | ✓ |
+  | 8 | Notificaciones push | N/A (se explica) |
+  | 9 | Temporizador en cero | ✓ |
+  | 10 | Aceptar dos veces | ✓ |
+  | 11 | Solicitud cancelada por el pasajero | ✓ |
+  | 12 | Pago aprobado (APRO) | ✓ |
+  | 13 | Pago pendiente (CONT) | ✓ |
+  | 14 | Pago rechazado (OTHE) | ✓ |
+  | 15 | Saldo negativo | ✓ |
+  | 16 | Efectivo dos veces (idempotente) | ✓ |
+  | 17 | Cuenta pendiente intenta Disponible | ✓ |
+  | 18 | Cerrar la app durante el cobro | ✓ |
+  | 19 | Comisión al 25 %: el historial conserva el 20 % | ✓ |
+  | 20 | Paginación con pageSize 2 | ✓ |
+  | 21 | Sin limpieza en useDriverLocation: el GPS sigue escribiendo; restaurado con git restore | ✓ |
+  Hallazgo: "Cobrar con Mercado Pago" mostró de forma intermitente "El servidor de pagos no está disponible" aunque el backend funcionaba en las demás pruebas; la app respondió con un mensaje claro y sin cerrarse. [COMPLETAR con el diagnóstico]
+- Aprendizaje: Entendí que probar como alguien que intenta romper la app revela comportamientos que las pruebas normales no muestran, que un fallo intermitente se diagnostica con datos (registros e inspector de red) y no adivinando, y que la prueba de quitar la limpieza de un useEffect hace visible por qué existe. Haría distinto: ejecutar estas pruebas al cerrar cada módulo y no solo al final.
+
+### Entrada #32
+- Fecha: 2026-11-13
+- Integrante: Santiago Cadavid Arboleda
+- Herramienta: Claude
+- Objetivo: Cerrar el proyecto (paso 23C): renovar credenciales de prueba, verificar que no hay secretos en el repositorio, revisar y exportar la bitácora y hacer el PR final.
+- Prompt: "Guiar el cierre del proyecto: renovar el Access Token de prueba de Mercado Pago que se vio en capturas, comprobar con Git que ningún .env ni la clave de servicio están en el repositorio ni en su historial, buscar campos pendientes en la bitácora, exportarla a PDF y preparar el PR final con la lista de entregables."
+- Enlace a la conversación: [PEGAR ENLACE DE SHARE]
+- Resumen de la respuesta: Se entregaron los pasos para renovar el token y probarlo, los comandos de verificación de secretos (git ls-files, git log sobre los archivos sensibles y .gitignore), la búsqueda de campos pendientes en la bitácora, la exportación a PDF desde GitHub y el PR final.
+- Qué se usó / modificó / descartó:
+  - Usado: comandos de Git para auditar el historial, impresión a PDF desde la vista de GitHub.
+  - Modificado: MP_ACCESS_TOKEN renovado solo en backend/.env (fuera del repositorio).
+  - Descartado: guardar capturas en el repositorio y extensiones nuevas para exportar el PDF.
+- Archivos y commit: docs/AI_LOG.md, docs/AI_LOG.pdf — [HASH]
+- Verificación: [COMPLETAR] pago APRO exitoso con el token renovado; sin .env ni clave de servicio en el repositorio ni en el historial; bitácora sin campos pendientes; repositorio público; PR final fusionado.
+- Aprendizaje: Entendí que cerrar un proyecto incluye auditarlo: credenciales, historial de Git y documentación, no solo que el código funcione. Haría distinto: no mostrar credenciales en capturas desde el principio y llenar cada campo de la bitácora en el momento.

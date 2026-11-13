@@ -39,6 +39,7 @@ async function postToBackend(path, body) {
     data = await response.json();
   } catch (parseError) {
     data = null; // e.g. ngrok's HTML page when the tunnel is off
+        if (__DEV__) console.warn('Backend response without JSON:', path, response.status);
   }
   if (!response.ok) throw new Error(data?.error ?? 'backend-unavailable');
   if (!data) throw new Error('backend-unavailable');
