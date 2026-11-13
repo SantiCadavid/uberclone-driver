@@ -1,7 +1,8 @@
-// AI-assisted: see docs/AI_LOG.md #21, #22
+// AI-assisted: see docs/AI_LOG.md #21, #22, #25
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -113,9 +114,14 @@ function ProfileContent({ uid, driver }) {
         keyboardDismissMode="on-drag"
       >
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(driver.fullName)}</Text>
-          </View>
+          {/* Cloudinary photo when it exists; initials for accounts created before step 21 */}
+          {driver.profilePhotoUrl ? (
+            <Image source={{ uri: driver.profilePhotoUrl }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(driver.fullName)}</Text>
+            </View>
+          )}
           <View style={styles.headerText}>
             <Text style={styles.name}>{driver.fullName}</Text>
             <Text style={styles.muted}>{driver.email}</Text>
@@ -170,6 +176,13 @@ function ProfileContent({ uid, driver }) {
         )}
 
         <Text style={styles.section}>{t('profile.vehicle')}</Text>
+        {vehicle.photoUrl && (
+          <Image
+            source={{ uri: vehicle.photoUrl }}
+            style={styles.vehiclePhoto}
+            accessibilityLabel={t('profile.vehiclePhoto')}
+          />
+        )}
         <InfoRow label={t('profile.category')} value={optionLabel(VEHICLE_CATEGORY_OPTIONS, vehicle.category, t)} />
         <InfoRow label={t('profile.plate')} value={vehicle.plate ?? '—'} />
         <InfoRow label={t('profile.brandModel')} value={`${vehicle.brand ?? '—'} ${vehicle.model ?? ''}`.trim()} />
@@ -251,6 +264,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontWeight: 'bold', color: colors.text },
   muted: { fontSize: 14, color: colors.muted, marginTop: 2 },
   section: { fontSize: 17, fontWeight: 'bold', color: colors.text, marginTop: 20, marginBottom: 10 },
+  vehiclePhoto: { width: '100%', height: 180, borderRadius: 10, marginBottom: 8, backgroundColor: colors.surface },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

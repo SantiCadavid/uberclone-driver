@@ -1,23 +1,28 @@
-// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20, #21, #22
+// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20, #21, #22, #25
 import { deleteUser } from 'firebase/auth';
 import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getAuthErrorMessage, logout, registerWithEmail } from './authService';
+import { uploadRegistrationPhotos } from './uploadService';
 import { buildDriverDocument } from '../utils/driverDocument';
 import { defaultT } from '../i18n';
 
-export async function registerDriver(personalData, vehicleData, documentsData) {
-  // 1. Create the account in Firebase Auth (the password stays there)
+// onProgress({ done, total }) reports the photo upload to the screen
+export async function registerDriver(personalData, vehicleData, documentsData, { onProgress } = {}) {
+  // 1. Create the account in Firebase Auth first: it validates the email before uploading anything
   const user = await registerWithEmail(personalData.email, personalData.password);
 
   try {
-    // 2. Save the profile with the same id as the account: drivers/{uid}
+    // 2. Upload the photos to Cloudinary (in parallel)
+    const photoUrls = await uploadRegistrationPhotos(personalData, vehicleData, documentsData, onProgress);
+    // 3. Save the profile with the same id as the account: drivers/{uid}
     const driver = buildDriverDocument(
       user.uid,
       personalData,
       vehicleData,
       serverTimestamp(),
       documentsData,
+      photoUrls,
     );
     await setDoc(doc(db, 'drivers', user.uid), driver);
     return user.uid;
@@ -66,8 +71,17 @@ export async function signOutDriver(uid, isAvailable) {
   await logout();
 }
 
+const UPLOAD_ERROR_KEYS = {
+  'upload-not-configured': 'upload.error.notConfigured',
+  'upload-read': 'upload.error.read',
+  'upload-timeout': 'upload.error.timeout',
+  'upload-network': 'upload.error.network',
+  'upload-failed': 'upload.error.failed',
+};
+
 export function getRegistrationErrorMessage(error, t = defaultT) {
   if (error?.code?.startsWith('auth/')) return getAuthErrorMessage(error, t);
+  if (UPLOAD_ERROR_KEYS[error?.message]) return t(UPLOAD_ERROR_KEYS[error.message]);
   if (error?.code === 'permission-denied') return t('register.error.permission');
   if (error?.code === 'unavailable') return t('register.error.network');
   return t('register.error.unknown');

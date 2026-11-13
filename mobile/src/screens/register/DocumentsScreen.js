@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #20, #22
+// AI-assisted: see docs/AI_LOG.md #20, #22, #25
 import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -59,6 +59,7 @@ export default function DocumentsScreen({ navigation }) {
   const scrollRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null); // { done, total }
 
   const tomorrow = useMemo(startOfTomorrow, []);
   const farthestDate = useMemo(farthestExpiry, []);
@@ -86,14 +87,16 @@ export default function DocumentsScreen({ navigation }) {
     if (submitting) return; // Prevents a double submit
     setSubmitting(true);
     setSubmitError(null);
+    setUploadProgress(null);
     setRegistrationInProgress(true);
     try {
-      await registerDriver(personalData, vehicleData, documentsData);
+      await registerDriver(personalData, vehicleData, documentsData, { onProgress: setUploadProgress });
       // Success: when the flag goes back to false, RootNavigator shows Home
     } catch (error) {
       setSubmitError(getRegistrationErrorMessage(error, t));
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
       setRegistrationInProgress(false);
     }
   };
@@ -239,7 +242,14 @@ export default function DocumentsScreen({ navigation }) {
           disabled={!canSubmit}
         >
           {submitting ? (
-            <ActivityIndicator color={colors.primaryText} />
+            <View style={styles.progressRow}>
+              <ActivityIndicator color={colors.primaryText} />
+              {uploadProgress && (
+                <Text style={styles.progressText}>
+                  {t('upload.progress', { done: uploadProgress.done, total: uploadProgress.total })}
+                </Text>
+              )}
+            </View>
           ) : (
             <Text style={styles.buttonText}>{t('register.submit')}</Text>
           )}
@@ -272,5 +282,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { backgroundColor: '#9CA3AF' },
   buttonText: { color: colors.primaryText, fontSize: 16, fontWeight: '600' },
+  progressRow: { flexDirection: 'row', alignItems: 'center' },
+  progressText: { color: colors.primaryText, fontSize: 15, fontWeight: '600', marginLeft: 10 },
   submitError: { color: colors.error, textAlign: 'center', marginTop: 12, fontWeight: '600' },
 });

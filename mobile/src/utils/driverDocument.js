@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #10, #20
+// AI-assisted: see docs/AI_LOG.md #10, #20, #25
 import { PRICING } from '../config/pricing';
 import { isTechnicalInspectionRequired } from './documentValidators';
 import { normalizePlate } from './validators';
@@ -8,19 +8,19 @@ export const APPROVAL_STATUS = {
   approved: 'approved',
 };
 
-// Documents section of the profile. Photos stay null until the Cloudinary upload (step 21).
+// Documents section of the profile. Photo URLs come from Cloudinary (step 21).
 // Only the Mercado Pago EMAIL is stored: never bank account or card numbers.
-function buildDocumentsSection(documentsData, vehicleYear, timestamp) {
+function buildDocumentsSection(documentsData, vehicleYear, timestamp, photoUrls) {
   const inspectionRequired = isTechnicalInspectionRequired(vehicleYear);
   return {
     license: {
       number: documentsData.licenseNumber.trim(),
-      photoUrl: null,
+      photoUrl: photoUrls.licensePhotoUrl ?? null,
       expiresAt: documentsData.licenseExpiry,
     },
-    soat: { photoUrl: null, expiresAt: documentsData.soatExpiry },
+    soat: { photoUrl: photoUrls.soatPhotoUrl ?? null, expiresAt: documentsData.soatExpiry },
     technicalInspection: inspectionRequired
-      ? { required: true, photoUrl: null, expiresAt: documentsData.techExpiry }
+      ? { required: true, photoUrl: photoUrls.techPhotoUrl ?? null, expiresAt: documentsData.techExpiry }
       : { required: false, photoUrl: null, expiresAt: null },
     mercadoPagoEmail: documentsData.mercadoPagoEmail.trim().toLowerCase(),
     termsAcceptedAt: timestamp,
@@ -30,9 +30,9 @@ function buildDocumentsSection(documentsData, vehicleYear, timestamp) {
 }
 
 // Pure function: builds the Firestore document field by field.
-// Password fields are never copied; Firebase Auth stores the password, not Firestore.
+// Password fields and local photo paths are never copied; only https URLs from Cloudinary.
 // "timestamp" is a parameter so this can be tested without Firebase.
-export function buildDriverDocument(uid, personalData, vehicleData, timestamp, documentsData = null) {
+export function buildDriverDocument(uid, personalData, vehicleData, timestamp, documentsData = null, photoUrls = {}) {
   const driver = {
     uid,
     fullName: personalData.fullName.trim(),
@@ -42,7 +42,7 @@ export function buildDriverDocument(uid, personalData, vehicleData, timestamp, d
     gender: personalData.gender,
     email: personalData.email.trim().toLowerCase(),
     language: personalData.language,
-    profilePhotoUrl: null, // TEMPORARY: filled in step 21 (Cloudinary upload)
+    profilePhotoUrl: photoUrls.profilePhotoUrl ?? null,
     vehicle: {
       category: vehicleData.category,
       plate: normalizePlate(vehicleData.plate),
@@ -51,7 +51,7 @@ export function buildDriverDocument(uid, personalData, vehicleData, timestamp, d
       year: Number(vehicleData.year),
       color: vehicleData.color,
       capacity: Number(vehicleData.capacity),
-      photoUrl: null, // TEMPORARY: filled in step 21 (Cloudinary upload)
+      photoUrl: photoUrls.vehiclePhotoUrl ?? null,
     },
     approvalStatus: APPROVAL_STATUS.pending,
     isAvailable: false,
@@ -59,7 +59,7 @@ export function buildDriverDocument(uid, personalData, vehicleData, timestamp, d
     updatedAt: timestamp,
   };
   if (documentsData) {
-    driver.documents = buildDocumentsSection(documentsData, vehicleData.year, timestamp);
+    driver.documents = buildDocumentsSection(documentsData, vehicleData.year, timestamp, photoUrls);
   }
   return driver;
 }
