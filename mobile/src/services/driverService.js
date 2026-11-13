@@ -1,17 +1,23 @@
-// AI-assisted: see docs/AI_LOG.md #10, #11, #13
+// AI-assisted: see docs/AI_LOG.md #10, #11, #13, #20
 import { deleteUser } from 'firebase/auth';
 import { doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getAuthErrorMessage, registerWithEmail } from './authService';
 import { buildDriverDocument } from '../utils/driverDocument';
 
-export async function registerDriver(personalData, vehicleData) {
+export async function registerDriver(personalData, vehicleData, documentsData) {
   // 1. Create the account in Firebase Auth (the password stays there)
   const user = await registerWithEmail(personalData.email, personalData.password);
 
   try {
     // 2. Save the profile with the same id as the account: drivers/{uid}
-    const driver = buildDriverDocument(user.uid, personalData, vehicleData, serverTimestamp());
+    const driver = buildDriverDocument(
+      user.uid,
+      personalData,
+      vehicleData,
+      serverTimestamp(),
+      documentsData,
+    );
     await setDoc(doc(db, 'drivers', user.uid), driver);
     return user.uid;
   } catch (error) {

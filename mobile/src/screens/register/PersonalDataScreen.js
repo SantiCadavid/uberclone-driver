@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #8
+// AI-assisted: see docs/AI_LOG.md #8, #20
 import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -60,6 +60,7 @@ export default function PersonalDataScreen({ navigation }) {
         style={styles.container}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <Text style={styles.title}>Datos personales</Text>
 

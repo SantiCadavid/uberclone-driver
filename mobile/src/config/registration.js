@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #7, #12
+// AI-assisted: see docs/AI_LOG.md #7, #12, #20
 // Single place for registration limits and dropdown options
 export const REGISTRATION_RULES = {
   maxFullNameLength: 50,
@@ -14,6 +14,12 @@ export const REGISTRATION_RULES = {
   maxModelLength: 30,
   // Dealers sell next year's models in advance (e.g. 2027 models during 2026)
   maxModelYearsAhead: 1,
+  // Documents (tab 3)
+  licenseNumberMinDigits: 6,
+  licenseNumberMaxDigits: 15,
+  maxExpiryYearsAhead: 10, // catches typos such as the year 2099
+  // Technical-mechanical inspection is required from this vehicle age (didactic rule, confirm with the teacher)
+  technicalInspectionAfterYears: 6,
 };
 
 // Passenger capacity allowed per vehicle category

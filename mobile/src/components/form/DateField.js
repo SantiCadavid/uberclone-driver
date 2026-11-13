@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #8
+// AI-assisted: see docs/AI_LOG.md #8, #20
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -12,12 +12,20 @@ const pad = (number) => String(number).padStart(2, '0');
 const formatDate = (date) =>
   `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 
-export default function DateField({ label, error, value, onChange, maximumDate }) {
+export default function DateField({
+  label,
+  error,
+  value,
+  onChange,
+  maximumDate,
+  minimumDate,
+  initialDate = DEFAULT_PICKER_DATE,
+}) {
   const [open, setOpen] = useState(false);
-  const [draftDate, setDraftDate] = useState(value ?? DEFAULT_PICKER_DATE);
+  const [draftDate, setDraftDate] = useState(value ?? initialDate);
 
   const openPicker = () => {
-    setDraftDate(value ?? DEFAULT_PICKER_DATE);
+    setDraftDate(value ?? initialDate);
     setOpen(true);
   };
 
@@ -49,6 +57,7 @@ export default function DateField({ label, error, value, onChange, maximumDate }
           value={draftDate}
           mode="date"
           maximumDate={maximumDate}
+          minimumDate={minimumDate}
           onChange={handleAndroidChange}
         />
       )}
@@ -66,6 +75,7 @@ export default function DateField({ label, error, value, onChange, maximumDate }
                 themeVariant="light"
                 locale="es-CO"
                 maximumDate={maximumDate}
+                minimumDate={minimumDate}
                 onChange={(event, selectedDate) => selectedDate && setDraftDate(selectedDate)}
               />
               <View style={styles.actions}>
