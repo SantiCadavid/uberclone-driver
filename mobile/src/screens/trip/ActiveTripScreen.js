@@ -88,7 +88,7 @@ export default function ActiveTripScreen({ navigation }) {
     payWithCard,
     verify,
     markCash,
-  } = useTripPayment(trip, uid);
+  } = useTripPayment(trip);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null); // { type, key }
   const pickupStartedRef = useRef(null);

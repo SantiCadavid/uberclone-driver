@@ -1,15 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #18, #23
-import { doc, increment, runTransaction, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './firebase';
-import { PAYMENT_CONFIG, PAYMENT_STATUS } from '../config/payment';
-import { PAYMENT_METHODS, TRIP_STATUS } from '../config/trip';
-import { getCollectionActions } from '../utils/paymentStatus';
+// AI-assisted: see docs/AI_LOG.md #18, #23, #26
+import { auth } from './firebase';
+import { PAYMENT_CONFIG } from '../config/payment';
 import { defaultT } from '../i18n';
 
-// ---------- Backend (Mercado Pago) ----------
+// ---------- Backend (Mercado Pago and cash) ----------
 
 // POST to our backend with the Firebase ID token. Secrets never live in the app:
-// the backend verifies the token and talks to Mercado Pago with its own access token.
+// the backend verifies the token and is the only one that moves money.
 async function postToBackend(path, body) {
   if (!PAYMENT_CONFIG.backendUrl) throw new Error('backend-not-configured');
   const user = auth.currentUser;
@@ -64,36 +61,10 @@ export function verifyPayment(tripId) {
   return postToBackend('/payments/verify', { tripId });
 }
 
-// ---------- Cash ----------
-
-// Transaction: the trip and the balance change together or not at all
-export async function registerCashPayment(tripId, driverId) {
-  const tripRef = doc(db, 'trips', tripId);
-  const driverRef = doc(db, 'drivers', driverId);
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(tripRef);
-    if (!snapshot.exists()) throw new Error('trip-not-found');
-    const trip = snapshot.data();
-    if (trip.driverId !== driverId) throw new Error('trip-not-yours');
-    // Same rule as the buttons, checked again on fresh data (double tap, webhook meanwhile)
-    if (!getCollectionActions(trip).canMarkCash) throw new Error('cash-not-allowed');
-    if (!Number.isInteger(trip.commission)) throw new Error('trip-invalid-amounts');
-
-    transaction.update(tripRef, {
-      status: TRIP_STATUS.paid,
-      paymentStatus: PAYMENT_STATUS.CASH,
-      paymentMethod: PAYMENT_METHODS.cash,
-      // Keeps track of a card payment that was rejected and then collected in cash
-      ...(trip.paymentMethod !== PAYMENT_METHODS.cash && { paymentMethodChangedFrom: trip.paymentMethod }),
-      paidAt: serverTimestamp(),
-      paymentUpdatedAt: serverTimestamp(),
-    });
-    // The platform did not receive the money: its commission comes out of the balance (may go negative)
-    transaction.update(driverRef, {
-      balance: increment(-trip.commission),
-      updatedAt: serverTimestamp(),
-    });
-  });
+// Cash: the backend marks the trip paid and takes the commission from the balance (idempotent).
+// The Firestore rules do not let the app change the balance or mark a trip as paid.
+export function registerCashPayment(tripId) {
+  return postToBackend('/payments/cash', { tripId });
 }
 
 // ---------- Messages ----------

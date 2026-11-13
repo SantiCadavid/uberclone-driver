@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #18, #23
+// AI-assisted: see docs/AI_LOG.md #18, #23, #26
 import { useCallback, useEffect, useState } from 'react';
 import * as WebBrowser from 'expo-web-browser';
 import {
@@ -8,8 +8,6 @@ import {
   verifyPayment,
 } from '../services/paymentService';
 import { normalizePaymentStatus } from '../utils/paymentStatus';
-import { withTimeout } from '../utils/withTimeout';
-import { TRIP_CONFIG } from '../config/trip';
 import { PAYMENT_STATUS } from '../config/payment';
 
 // Messages are stored as translation keys, so they follow the language if it changes
@@ -24,7 +22,8 @@ const VERIFY_DONE = { type: 'info', key: 'payment.verify.done' };
 const verifyMessage = (result) => VERIFY_MESSAGES[normalizePaymentStatus(result?.paymentStatus)] ?? VERIFY_DONE;
 
 // Custom hook: the collection actions of a trip. The screen only calls these functions.
-export function useTripPayment(trip, driverId) {
+// Every money movement goes through the backend.
+export function useTripPayment(trip) {
   const [busyAction, setBusyAction] = useState(null); // 'card' | 'verify' | 'cash' | null
   const [message, setMessage] = useState(null); // { type, key }
   const tripId = trip?.id ?? null;
@@ -70,10 +69,10 @@ export function useTripPayment(trip, driverId) {
   const markCash = useCallback(
     () =>
       run('cash', async () => {
-        await withTimeout(registerCashPayment(tripId, driverId), TRIP_CONFIG.actionTimeoutMs);
+        await registerCashPayment(tripId);
         return { type: 'success', key: 'payment.cashRegistered' };
       }),
-    [run, tripId, driverId],
+    [run, tripId],
   );
 
   return { busyAction, busy: busyAction !== null, message, payWithCard, verify, markCash };
