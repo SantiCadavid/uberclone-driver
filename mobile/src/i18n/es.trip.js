@@ -73,6 +73,7 @@ export default {
   'trip.error.invalidState': 'El viaje cambió de estado mientras tanto. La pantalla ya muestra el estado actual.',
   'trip.error.timeout': 'El servidor no respondió. Revisa tu conexión e inténtalo de nuevo.',
   'trip.error.unknown': 'No se pudo procesar la solicitud. Inténtalo de nuevo.',
+  'trip.error.loadActive': 'No se pudo cargar el viaje activo. Revisa tu conexión.',
 
   'payment.verify.approved': 'Pago aprobado por Mercado Pago.',
   'payment.verify.pending': 'El pago quedó pendiente. Toca "Verificar pago" en unos minutos.',

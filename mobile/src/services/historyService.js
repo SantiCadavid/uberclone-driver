@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #24
 import {
   Timestamp,
   collection,
@@ -13,6 +13,7 @@ import {
 import { db } from './firebase';
 import { HISTORY_CONFIG } from '../config/history';
 import { TRIP_STATUS } from '../config/trip';
+import { defaultT } from '../i18n';
 
 const toMs = (value) => value?.toMillis?.() ?? null;
 
@@ -61,13 +62,14 @@ export function subscribeToPaidTrips(driverId, sinceMs, onData, onError) {
   return onSnapshot(paidQuery, (snapshot) => onData(snapshot.docs.map(toTrip)), onError);
 }
 
-export function getHistoryErrorMessage(error) {
-  if (error?.code === 'failed-precondition') {
-    // Only happens until the composite index is created in Firestore
-    return 'Falta crear un índice en Firestore para esta consulta. El enlace para crearlo aparece en la terminal de Expo.';
-  }
-  if (error?.code === 'unavailable' || error?.message === 'timeout') {
-    return 'Sin conexión. Revisa tu internet e inténtalo de nuevo.';
-  }
-  return 'No se pudo cargar la información. Inténtalo de nuevo.';
+// Returns a translation key (hooks store it; the screen translates it)
+export function getHistoryErrorKey(error) {
+  // Only happens until the composite index is created in Firestore
+  if (error?.code === 'failed-precondition') return 'history.error.index';
+  if (error?.code === 'unavailable' || error?.message === 'timeout') return 'history.error.network';
+  return 'history.error.unknown';
+}
+
+export function getHistoryErrorMessage(error, t = defaultT) {
+  return t(getHistoryErrorKey(error));
 }

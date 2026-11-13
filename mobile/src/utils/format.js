@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #15, #23
+// AI-assisted: see docs/AI_LOG.md #15, #23, #24
 import { VEHICLE_CATEGORY_OPTIONS } from '../config/registration';
 import { PAYMENT_METHODS } from '../config/trip';
 import { defaultT } from '../i18n';
@@ -11,17 +11,12 @@ export function formatCop(value) {
   return `${sign}$${digits}`;
 }
 
-// Spanish labels kept for screens still being translated (history, step 19D)
-export const PAYMENT_METHOD_LABELS = {
-  mercadopago: 'Tarjeta (Mercado Pago)',
-  cash: 'Efectivo',
-};
-
 // Translated payment method ('cash' -> 'Efectivo' / 'Cash'); '—' when unknown
 export function paymentMethodLabel(method, t = defaultT) {
   return Object.values(PAYMENT_METHODS).includes(method) ? t(`payment.method.${method}`) : '—';
 }
 
+// Translated vehicle category ('economy' -> 'Económico' / 'Economy'); the raw value when unknown
 export function categoryLabel(value, t = defaultT) {
   const option = VEHICLE_CATEGORY_OPTIONS.find((item) => item.value === value);
   return option ? t(option.labelKey) : value;

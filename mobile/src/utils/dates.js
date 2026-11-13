@@ -1,5 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #19
+// AI-assisted: see docs/AI_LOG.md #19, #24
 import { PERIODS } from '../config/history';
+import { defaultT } from '../i18n';
 
 const pad = (value) => String(value).padStart(2, '0');
 
@@ -51,28 +52,28 @@ export function getPeriodRange(period, now = new Date(), custom = {}) {
   }
 }
 
-// Errors shown under each date field (never in an Alert)
-export function validateDateRange(from, to) {
+// Errors shown under each date field (never in an Alert), in the app language
+export function validateDateRange(from, to, t = defaultT) {
   const errors = { from: null, to: null };
-  if (!isValidDate(from)) errors.from = 'Selecciona la fecha inicial.';
-  if (!isValidDate(to)) errors.to = 'Selecciona la fecha final.';
+  if (!isValidDate(from)) errors.from = t('validation.rangeFrom');
+  if (!isValidDate(to)) errors.to = t('validation.rangeTo');
   if (!errors.from && !errors.to && startOfDay(from) > startOfDay(to)) {
-    errors.to = 'La fecha final debe ser igual o posterior a la inicial.';
+    errors.to = t('validation.rangeOrder');
   }
   return errors;
 }
 
-// 1794451320000 -> "11/11/2026 9:42 p. m."
-export function formatDateTime(ms) {
+// 1794451320000 -> "11/11/2026 9:42 p. m." (Spanish) or "11/11/2026 9:42 PM" (English)
+export function formatDateTime(ms, t = defaultT) {
   if (typeof ms !== 'number' || !Number.isFinite(ms)) return '—';
   const date = new Date(ms);
   const hours = date.getHours();
-  const suffix = hours < 12 ? 'a. m.' : 'p. m.';
+  const suffix = hours < 12 ? t('date.am') : t('date.pm');
   const hours12 = hours % 12 || 12;
   return `${formatDate(date)} ${hours12}:${pad(date.getMinutes())} ${suffix}`;
 }
 
-// Date -> "11/11/2026"
+// Date -> "11/11/2026" (dd/mm/yyyy in both languages: the app is for Colombia)
 export function formatDate(date) {
   if (!isValidDate(date)) return '—';
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;

@@ -73,6 +73,7 @@ export default {
   'trip.error.invalidState': 'The trip changed meanwhile. The screen already shows its current state.',
   'trip.error.timeout': 'The server did not answer. Check your connection and try again.',
   'trip.error.unknown': 'The request could not be processed. Please try again.',
+    'trip.error.loadActive': 'Could not load the active trip. Check your connection.',
 
   'payment.verify.approved': 'Payment approved by Mercado Pago.',
   'payment.verify.pending': 'The payment is pending. Tap "Verify payment" in a few minutes.',

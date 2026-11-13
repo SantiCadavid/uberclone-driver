@@ -36,7 +36,7 @@ export function useActiveTrip(driverId) {
         setLoading(false);
       },
       () => {
-        setError('No se pudo cargar el viaje activo. Revisa tu conexión.');
+          setError('trip.error.loadActive');
         setLoading(false);
       },
     );
